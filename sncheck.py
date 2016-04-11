@@ -3,63 +3,65 @@
 
 import re
 import os
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 class NMEAData(object):
 
-    def __init__(self, path):
-        self.__path = path + "\\SYSTEM\\NMEA\\NORMAL\\"
-        self.__trip = {}
-        self.__data = {}
+    def __init__(self):
+        pass
 
-    def concat_trip(self):
-        self.__files = os.listdir(self.__path)
-        self.__files.sort()
+    def concat_trip(self, path):
+        path += "\\SYSTEM\\NMEA\\NORMAL\\"
+        files = os.listdir(path)
+        files.sort()
+        dict_trip = {}
 
-        for file in self.__files:
-            file = self.__path + file
+        for file in files:
+            file = path + file
             with open(file, "r") as f:
                 key = f.readline().split(",")[-1]
-                if key not in self.__trip:
-                    self.__trip[key] = list()
-                    self.__data[key] = list()
-                self.__trip[key].append(file)
+                if key not in dict_trip:
+                    dict_trip[key] = list()
+                dict_trip[key].append(file)
 
-        for k, v in self.__trip.items():
-            self.__data[k] = self.__get_lines(v)
-        # print(self.__data)
+        return dict_trip
 
-    def check_sn(self):
-        for k, v in self.__data.items():
+    def check(self, dict_trip):
+        data = {}
+        for k, v in dict_trip.items():
+            data[k] = self.__get_lines(v)
+
+        for k, v in data.items():
             print("trip:", k)
-            self.__check_sn(v)
-
-    def __check_sn(self, data):
-        pack = list()
-        p = list()
-        r = re.compile("^\$GPRMC")
-        for d in data:
-            if r.search(d) and len(p) > 0:
-                pack.append(p[:])
-                p.clear()
-            p.append(d)
-        self.__show_data(pack)
+            pack = list()
+            p = list()
+            r = re.compile("^\$GPRMC")
+            for d in v:
+                if r.search(d) and len(p) > 0:
+                    pack.append(p[:])
+                    p.clear()
+                p.append(d)
+            self.__show_data(pack)
 
     def __show_data(self, pack):
         ttff = ""
-        ttffdate = ""
+        ttffnmea = ""
 
         for i, p in enumerate(pack):
             stnum = list()
             snlist = list()
+            sn_dict = dict((x, list()) for x in ["time", "num", "sn"])
             rmc = p[0].split(",")
             if rmc[0] == "$GPRMC":
                 stnum.clear()
                 if rmc[2] == 'A' and rmc[3] and not ttff:
-                    ttff = rmc[1]
-                    ttffdate = rmc[9]
-                    print("[{indx}] ttff: {date}-{time} " .format(
-                         indx=int(i/2), date=ttffdate, time=ttff))
+                    sn_dict["time"] = rmc[1] + "-" + rmc[9]
+                    ttff = str(int(i/2))
+                    ttffnmea = sn_dict["time"]
+                    print("ttff: {indx}(s) {t}" .format(
+                        indx=ttff, t=ttffnmea))
             if ttff:
                 for s in p:
                     sentence = s.replace("*", ",").split(",")
@@ -78,10 +80,14 @@ class NMEAData(object):
                             pos += 4
 
                 if snlist:
-                    print("stnum[{num}]: SN: {sn}".format(
-                        num=len(stnum), sn=self.__conv_sn(snlist)))
+                    sn_dict["num"] = len(stnum)
+                    sn_dict["sn"] = self.__average_sn(snlist)
+                    print("num[{n}]: SN: {sn}".format(
+                        n=sn_dict["num"], sn=sn_dict["sn"]))
+                    # print("time:{t} num[{n}]: SN: {sn}".format(
+                    #     n=sn_dict["num"], sn=sn_dict["sn"], t=sn_dict["time"]))
 
-    def __conv_sn(self, snlist):
+    def __average_sn(self, snlist):
         sn = ""
         try:
             sn = str(sum(list(map(int, snlist))) / len(snlist))
@@ -99,21 +105,6 @@ class NMEAData(object):
                     if r.search(l):
                         lines.append(l)
         return lines
-
-    def __show_ttff(self, tid, files):
-        ttff = ""
-        ttffdate = ""
-        for file in files:
-            with open(file, "r") as f:
-                for line in f:
-                    sentence = line.split(",")
-                    if sentence[0] == "$GPRMC":
-                        if sentence[2] == 'A' and sentence[3] and not ttff:
-                            ttff = sentence[1]
-                            ttffdate = sentence[9]
-
-        print("tid", tid, "ttffdate:", ttffdate, "ttff:", ttff)
-
 
 if __name__ == '__main__':
     pass

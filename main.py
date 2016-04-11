@@ -3,8 +3,6 @@
 
 import sys
 from PyQt4 import QtGui
-import matplotlib.pyplot as plt
-import seaborn as sns
 import sncheck  # my module
 
 
@@ -33,6 +31,7 @@ class Logger(object):
         # 書き出す。
         if self.out:
             self.out.write(message)
+
 
 class MyGui(QtGui.QMainWindow):
 
@@ -87,9 +86,8 @@ class MyGui(QtGui.QMainWindow):
         self.__draw(path)
 
     def __draw(self, path):
-        nmea = sncheck.NMEAData(path)
-        nmea.concat_trip()
-        nmea.check_sn()
+        nmea = sncheck.NMEAData()
+        dict = nmea.check(nmea.concat_trip(path))
 
 
 def main():
