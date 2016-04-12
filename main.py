@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
+from PyQt4 import QtCore
 from PyQt4 import QtGui
 import sncheck  # my module
 
@@ -47,7 +48,20 @@ class MyGui(QtGui.QMainWindow):
     def __init__(self):
         super(MyGui, self).__init__()
 
+        self.__textEdit = QtGui.QTextEdit()
         self.__create()
+
+    def __print(self, type, *objs):
+        printtype = {
+                "ERR": lambda *objs: print("ERROR: ", *objs, file=sys.stderr),
+                "WARN": lambda *objs: print("WARN: ", *objs, file=sys.stderr),
+                "INFO": lambda *objs: print(*objs, file=sys.stdout),
+        }
+
+        if type in printtype:
+            printtype[type](*objs)
+        else:
+            print(*objs, file=sys.stdout)
 
     def closeEvent(self, event):
         u""" closeボタン押下時の処理 """
@@ -56,15 +70,13 @@ class MyGui(QtGui.QMainWindow):
         sys.stderr = None
 
     def __create(self):
-        self.textEdit = QtGui.QTextEdit()
-        self.setCentralWidget(self.textEdit)
-        self.textEdit.setReadOnly(True)
-        self.textEdit.setTextColor(QtGui.QColor("blue"))
-        self.textEdit.setText(self.__get_readme())
-        self.textEdit.setTextColor(QtGui.QColor("black"))
+        self.setCentralWidget(self.__textEdit)
+        self.__textEdit.setReadOnly(True)
+        sys.stdout = Logger(self.__textEdit, sys.stdout)
+        sys.stderr = Logger(self.__textEdit, sys.stderr, QtGui.QColor("red"))
 
-        sys.stdout = Logger(self.textEdit, sys.stdout)
-        sys.stderr = Logger(self.textEdit, sys.stderr, QtGui.QColor(255, 0, 0))
+        self.__textEdit.setTextColor(QtGui.QColor("blue"))
+        self.__textEdit.setText(self.__get_readme())
 
         openFile = QtGui.QAction(
                     QtGui.QApplication.style()
@@ -84,21 +96,19 @@ class MyGui(QtGui.QMainWindow):
 
     def __open(self):
         path = QtGui.QFileDialog.getExistingDirectory(self, 'Open Dir', '.')
-        self.__draw(path)
-
-    def __draw(self, path):
-        self.textEdit.clear()
+        self.__textEdit.clear()
         nmea = sncheck.NMEAData()
         trip = nmea.check(nmea.concat_trip(path))
 
         for tid, v in trip.items():
-            print("==================================================")
-            print("trip id: ", tid)
-            print("TTFF: {ttff}(sec)  {time}".format(
+            self.__print("", "==========================================")
+            self.__print("", "trip id: ", tid)
+            self.__print("", "TTFF: {ttff}(sec)  {time}".format(
                 ttff=v["ttff"], time=v["ttffnmea"]))
-            print("--------------------------------------------------")
+            self.__print("", "------------------------------------------")
             for sn in v["sn"]:
-                print(sn)
+                self.__print("", sn)
+
 
     def __get_readme(self):
         return \

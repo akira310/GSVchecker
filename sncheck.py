@@ -2,9 +2,11 @@
 # -*- coding: utf-8 -*-
 
 import re
-import os
+from os import listdir
+import sys
 import matplotlib.pyplot as plt
 import seaborn as sns
+from time import sleep
 
 
 class NMEAData(object):
@@ -28,7 +30,7 @@ class NMEAData(object):
         """
 
         path += "\\SYSTEM\\NMEA\\NORMAL\\"
-        files = os.listdir(path)
+        files = listdir(path)
         files.sort()
         dict_trip = {}
 
@@ -118,7 +120,7 @@ class NMEAData(object):
         try:
             sn = str(sum(list(map(int, snlist))) / len(snlist))
         except Exception as e:
-            os.sys.stderr(e)
+            warning(e)
 
         return sn
 
@@ -132,5 +134,10 @@ class NMEAData(object):
                         lines.append(l)
         return lines
 
+
+def warning(*objs):
+    print("WARNING: ", *objs, file=sys.stderr)
+
 if __name__ == '__main__':
-    pass
+    warning("this file is not entry point !!")
+    sleep(5)
