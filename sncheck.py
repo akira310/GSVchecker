@@ -24,8 +24,7 @@ class NMEAData(object):
 
         Returns:
             dict_trip: tripIDごとにファイルをまとめたdict
-                 * key: tripID
-                 * value: 対応tripIDのファイルフルパス群(list)
+                 * key1: tripID, value(list): 対応tripIDのファイルフルパス
         """
 
         path += "\\SYSTEM\\NMEA\\NORMAL\\"
@@ -50,9 +49,14 @@ class NMEAData(object):
             dict_trip: self.concat_trip()で得れるdict
 
         Returns:
-            dict_trip: tripIDごとにファイルをまとめたdict
-                 * key: tripID
-                 * value: 対応tripIDのファイルフルパス群(list)
+            trip: tripIDごとのチェック結果dict
+                 * key1: tripID, value(list): 対応tripIDのチェック結果dict
+                    * key1: "ttff"
+                    * key2: "ttffnmea"
+                    * key3: "sn", value(list): SNリスト
+                        * key1:"time"
+                        * key2:"num"
+                        * key3:"sn"
         """
 
         data = dict()
@@ -72,17 +76,6 @@ class NMEAData(object):
                 p.append(d)
             trip[k] = self.__check_trip(pack)
         return (trip)
-
-    def show(self, trip):
-        for tid, v in trip.items():
-            print("==================================================")
-            print("trip id: ", tid)
-            print("TTFF: {ttff}(sec)  {time}".format(
-                ttff=v["ttff"] if "ttff" in v else "err",
-                time=v["ttffnmea"] if "ttffnmea" in v else "err"))
-            print("--------------------------------------------------")
-            for sn in v["sn"]:
-                print(sn)
 
     def __check_trip(self, pack):
         trip = {"ttff": "", "ttffnmea": "", "sn": []}

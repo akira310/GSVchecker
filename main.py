@@ -84,12 +84,21 @@ class MyGui(QtGui.QMainWindow):
 
     def __open(self):
         path = QtGui.QFileDialog.getExistingDirectory(self, 'Open Dir', '.')
-        # print("dir path: {0}".format(path))
         self.__draw(path)
 
     def __draw(self, path):
+        self.textEdit.clear()
         nmea = sncheck.NMEAData()
-        nmea.show(nmea.check(nmea.concat_trip(path)))
+        trip = nmea.check(nmea.concat_trip(path))
+
+        for tid, v in trip.items():
+            print("==================================================")
+            print("trip id: ", tid)
+            print("TTFF: {ttff}(sec)  {time}".format(
+                ttff=v["ttff"], time=v["ttffnmea"]))
+            print("--------------------------------------------------")
+            for sn in v["sn"]:
+                print(sn)
 
     def __get_readme(self):
         return \
