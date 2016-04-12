@@ -8,11 +8,26 @@ import seaborn as sns
 
 
 class NMEAData(object):
+    u""" NMEAデータ確認用クラス
+
+    指定ｳれたNORMALディレクトリ内のNMEAデータからSN等を算出する
+    """
 
     def __init__(self):
         pass
 
     def concat_trip(self, path):
+        u""" 各ファイルをtrip idごとにまとめる
+
+        Args:
+            path: sd root path
+
+        Returns:
+            dict_trip: tripIDごとにファイルをまとめたdict
+                 * key: tripID
+                 * value: 対応tripIDのファイルフルパス群(list)
+        """
+
         path += "\\SYSTEM\\NMEA\\NORMAL\\"
         files = os.listdir(path)
         files.sort()
@@ -29,12 +44,24 @@ class NMEAData(object):
         return dict_trip
 
     def check(self, dict_trip):
-        data = {}
+        u""" tripIDごとのTTFF,SN等を調べる
+
+        Args:
+            dict_trip: self.concat_trip()で得れるdict
+
+        Returns:
+            dict_trip: tripIDごとにファイルをまとめたdict
+                 * key: tripID
+                 * value: 対応tripIDのファイルフルパス群(list)
+        """
+
+        data = dict()
+        trip = dict()
+
         for k, v in dict_trip.items():
             data[k] = self.__get_lines(v)
 
         for k, v in data.items():
-            print("trip:", k)
             pack = list()
             p = list()
             r = re.compile("^\$GPRMC")
@@ -43,56 +70,62 @@ class NMEAData(object):
                     pack.append(p[:])
                     p.clear()
                 p.append(d)
-            self.__show_data(pack)
+            trip[k] = self.__check_trip(pack)
+        return (trip)
 
-    def __show_data(self, pack):
-        ttff = ""
-        ttffnmea = ""
+    def show(self, trip):
+        for tid, v in trip.items():
+            print("==================================================")
+            print("trip id: ", tid)
+            print("TTFF: {ttff}(sec)  {time}".format(
+                ttff=v["ttff"] if "ttff" in v else "err",
+                time=v["ttffnmea"] if "ttffnmea" in v else "err"))
+            print("--------------------------------------------------")
+            for sn in v["sn"]:
+                print(sn)
+
+    def __check_trip(self, pack):
+        trip = {"ttff": "", "ttffnmea": "", "sn": []}
 
         for i, p in enumerate(pack):
             stnum = list()
             snlist = list()
             sn_dict = dict((x, list()) for x in ["time", "num", "sn"])
-            rmc = p[0].split(",")
-            if rmc[0] == "$GPRMC":
-                stnum.clear()
-                if rmc[2] == 'A' and rmc[3] and not ttff:
-                    sn_dict["time"] = rmc[1] + "-" + rmc[9]
-                    ttff = str(int(i/2))
-                    ttffnmea = sn_dict["time"]
-                    print("ttff: {indx}(s) {t}" .format(
-                        indx=ttff, t=ttffnmea))
-            if ttff:
-                for s in p:
-                    sentence = s.replace("*", ",").split(",")
 
-                    if sentence[0] == "$GPGSA":
-                        if sentence[2] != 1:
-                            stnum = sentence[3:3+12]
-                        while "" in stnum:
-                            del stnum[stnum.index("")]
+            for s in p:
+                sentence = s.replace("*", ",").split(",")
 
-                    if sentence[0] == "$GPGSV" and len(stnum) > 0:
-                        pos = 4
-                        while(pos < len(sentence)):
-                            if sentence[pos] in stnum:
-                                snlist.append(sentence[pos+3])
-                            pos += 4
+                if sentence[0] == "$GPRMC":
+                    stnum.clear()
+                    if sentence[2] == 'A' and sentence[3]:
+                        sn_dict["time"] = sentence[1] + "-" + sentence[9]
+                        if not trip["ttff"]:
+                            trip["ttff"] = str(int(i/2))
+                            trip["ttffnmea"] = sn_dict["time"]
+                elif trip["ttff"] and sentence[0] == "$GPGSA":
+                    if sentence[2] != 1:
+                        stnum = sentence[3:3+12]
+                    while "" in stnum:
+                        del stnum[stnum.index("")]
+                elif trip["ttff"] and len(stnum) and sentence[0] == "$GPGSV":
+                    pos = 4
+                    while(pos < len(sentence)):
+                        if sentence[pos] in stnum:
+                            snlist.append(sentence[pos+3])
+                        pos += 4
 
-                if snlist:
-                    sn_dict["num"] = len(stnum)
-                    sn_dict["sn"] = self.__average_sn(snlist)
-                    print("num[{n}]: SN: {sn}".format(
-                        n=sn_dict["num"], sn=sn_dict["sn"]))
-                    # print("time:{t} num[{n}]: SN: {sn}".format(
-                    #     n=sn_dict["num"], sn=sn_dict["sn"], t=sn_dict["time"]))
+            if snlist:
+                sn_dict["num"] = len(stnum)
+                sn_dict["sn"] = self.__average_sn(snlist)
+                trip["sn"].append(sn_dict)
+        return trip
 
     def __average_sn(self, snlist):
         sn = ""
         try:
             sn = str(sum(list(map(int, snlist))) / len(snlist))
         except Exception as e:
-            print(e)
+            os.sys.stderr(e)
 
         return sn
 

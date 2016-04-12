@@ -7,6 +7,11 @@ import sncheck  # my module
 
 
 class Logger(object):
+    u""" GUIへのログ表示用クラス
+
+    GUIへ標準出力、エラー出力をパイプする
+    """
+
     def __init__(self, editor, out=None, color=None):
         self.editor = editor    # 結果出力用エディタ
         self.out = out       # 標準出力・標準エラーなどの出力オブジェクト
@@ -34,6 +39,10 @@ class Logger(object):
 
 
 class MyGui(QtGui.QMainWindow):
+    u""" GUI用クラス
+
+    ディレクトリの指定や結果出力を行う
+    """
 
     def __init__(self):
         super(MyGui, self).__init__()
@@ -41,9 +50,8 @@ class MyGui(QtGui.QMainWindow):
         self.__create()
 
     def closeEvent(self, event):
-        u"""
-        closeボタン押下時の処理
-        """
+        u""" closeボタン押下時の処理 """
+
         sys.stdout = None
         sys.stderr = None
 
@@ -74,12 +82,6 @@ class MyGui(QtGui.QMainWindow):
         self.setWindowTitle('File dialog')
         self.show()
 
-    def __get_readme(self):
-        return \
-            "\n==========================================================\n" +\
-            " SDカードデータのrootディレクトリを指定してください" +\
-            "\n==========================================================\n\n"
-
     def __open(self):
         path = QtGui.QFileDialog.getExistingDirectory(self, 'Open Dir', '.')
         # print("dir path: {0}".format(path))
@@ -87,7 +89,13 @@ class MyGui(QtGui.QMainWindow):
 
     def __draw(self, path):
         nmea = sncheck.NMEAData()
-        dict = nmea.check(nmea.concat_trip(path))
+        nmea.show(nmea.check(nmea.concat_trip(path)))
+
+    def __get_readme(self):
+        return \
+            "\n==========================================================\n" +\
+            " SDカードデータのrootディレクトリを指定してください" +\
+            "\n==========================================================\n\n"
 
 
 def main():
