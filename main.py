@@ -107,8 +107,10 @@ class MyGui(QtGui.QMainWindow):
                 ttff=v["ttff"], time=v["ttffnmea"]))
             self.__print("", "------------------------------------------")
             for sn in v["sn"]:
-                self.__print("", sn)
-
+                self.__print("", "SN[{n:02d}]: {sn:02.0f}\t{time}" .format(
+                            n=sn["num"], sn=sn["sn"], time=sn["time"]))
+            self.__print("", "\n")
+        self.__print("", "\nEND")
 
     def __get_readme(self):
         return \

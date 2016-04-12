@@ -82,7 +82,7 @@ class NMEAData(object):
     def __check_trip(self, pack):
         trip = {"ttff": "", "ttffnmea": "", "sn": []}
 
-        for i, p in enumerate(pack):
+        for cnt, p in enumerate(pack):
             stnum = list()
             snlist = list()
             sn_dict = dict((x, list()) for x in ["time", "num", "sn"])
@@ -93,21 +93,28 @@ class NMEAData(object):
                 if sentence[0] == "$GPRMC":
                     stnum.clear()
                     if sentence[2] == 'A' and sentence[3]:
-                        sn_dict["time"] = sentence[1] + "-" + sentence[9]
+                        for i in range(0, 4, 2):
+                            sn_dict["time"] += sentence[1][i:i+2] + ':'
+                        sn_dict["time"] += sentence[1][4:6] + "(+UTC0) - "
+                        for i in range(0, 4, 2):
+                            sn_dict["time"] += sentence[9][i:i+2] + '/'
+                        sn_dict["time"] += sentence[9][4:6]
+                        sn_dict["time"] = ''.join(sn_dict["time"])
+
                         if not trip["ttff"]:
-                            trip["ttff"] = str(int(i/2))
+                            trip["ttff"] = str(int(cnt/2))
                             trip["ttffnmea"] = sn_dict["time"]
+
                 elif trip["ttff"] and sentence[0] == "$GPGSA":
                     if sentence[2] != 1:
                         stnum = sentence[3:3+12]
                     while "" in stnum:
                         del stnum[stnum.index("")]
+
                 elif trip["ttff"] and len(stnum) and sentence[0] == "$GPGSV":
-                    pos = 4
-                    while(pos < len(sentence)):
+                    for pos in range(4, len(sentence), 4):
                         if sentence[pos] in stnum:
                             snlist.append(sentence[pos+3])
-                        pos += 4
 
             if snlist:
                 sn_dict["num"] = len(stnum)
@@ -118,7 +125,7 @@ class NMEAData(object):
     def __average_sn(self, snlist):
         sn = ""
         try:
-            sn = str(sum(list(map(int, snlist))) / len(snlist))
+            sn = sum(list(map(int, snlist))) / len(snlist)
         except Exception as e:
             warning(e)
 
