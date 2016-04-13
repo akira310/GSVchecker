@@ -37,7 +37,7 @@ class NMEAData(object):
         for file in files:
             file = path + file
             with open(file, "r") as f:
-                key = f.readline().split(",")[-1]
+                key = f.readline().split(",")[-1].rstrip()
                 if key not in dict_trip:
                     dict_trip[key] = list()
                 dict_trip[key].append(file)
@@ -137,8 +137,7 @@ class NMEAData(object):
         for file in files:
             with open(file, "r") as f:
                 for l in f:
-                    if r.search(l):
-                        lines.append(l)
+                    lines.append(l) if r.search(l) else ""
         return lines
 
 
