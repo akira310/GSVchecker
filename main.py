@@ -48,7 +48,6 @@ class MyGui(QtGui.QMainWindow):
     def __init__(self):
         super(MyGui, self).__init__()
 
-        self.__textEdit = QtGui.QTextEdit()
         self.__create()
 
     def __print(self, type, *objs):
@@ -70,14 +69,15 @@ class MyGui(QtGui.QMainWindow):
         sys.stderr = None
 
     def __create(self):
-        self.setCentralWidget(self.__textEdit)
-        self.__textEdit.setReadOnly(True)
-        sys.stdout = Logger(self.__textEdit, sys.stdout)
-        sys.stderr = Logger(self.__textEdit, sys.stderr, QtGui.QColor("red"))
+        self.__create_menu()
+        self.__textEdit = QtGui.QTextEdit()
+        self.__create_log_area()
+        self.__table = QtGui.QTableWidget()
+        self.__create_table_area()
+        self.setGeometry(100, 100, 750, 500)
+        self.show()
 
-        self.__textEdit.setTextColor(QtGui.QColor("blue"))
-        self.__textEdit.setText(self.__get_readme())
-
+    def __create_menu(self):
         openFile = QtGui.QAction(
                     QtGui.QApplication.style()
                     .standardIcon(QtGui.QStyle.SP_FileDialogStart),
@@ -90,24 +90,39 @@ class MyGui(QtGui.QMainWindow):
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(openFile)
 
-        self.setGeometry(100, 100, 750, 500)
-        self.setWindowTitle('File dialog')
-        self.show()
+    def __create_log_area(self):
+        self.top_dock = QtGui.QDockWidget("log", self)
+        self.top_dock.setFixedHeight(100)
+        self.top_dock.setWidget(self.__textEdit)
+        self.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.top_dock)
+
+        self.__textEdit.setReadOnly(True)
+        sys.stdout = Logger(self.__textEdit, sys.stdout)
+        sys.stderr = Logger(self.__textEdit, sys.stderr, QtGui.QColor("red"))
+
+        self.__textEdit.setTextColor(QtGui.QColor("blue"))
+        self.__textEdit.setText(self.__get_readme())
+
+    def __create_table_area(self):
+        self.__table.setRowCount(0)
+        self.__table.setColumnCount(3)
+        self.__table.setColumnWidth(2, 250)
+        self.__table.setHorizontalHeaderLabels(["st_num", "SN", "time-date"])
+        self.__table.verticalHeader().setVisible(False)
+        self.setCentralWidget(self.__table)
 
     def __open(self):
         path = QtGui.QFileDialog.getExistingDirectory(self, 'Open Dir', '.')
         self.__textEdit.clear()
         nmea = sncheck.NMEAData()
         trip = nmea.check(nmea.concat_trip(path))
-        self.__show_table(trip)
+        self.__show_table(trip, self.__table)
 
-    def __show_table(self, trip):
-        table = QtGui.QTableWidget()
-        table.resize(700, 500)
+    def __show_table(self, trip, table):
+        table.clear()
         tableItem = list()
-        table.setRowCount(0)
-        table.setColumnCount(3)
-        table.setHorizontalHeaderLabels(["st_num", "SN", "time-date"])
+        self.__table.setRowCount(0)
+        self.__table.setHorizontalHeaderLabels(["st_num", "SN", "time-date"])
         # table.setSortingEnabled(True)
         row = 0
 
@@ -120,23 +135,21 @@ class MyGui(QtGui.QMainWindow):
             btnstr = "tid: {id}  TTFF: {ttff}(s)  {t}".format(
                         id=tid, ttff=v["ttff"], t=v["ttffnmea"])
             table.setCellWidget(row, 0, QtGui.QPushButton(btnstr))
-            table.setSpan(row, 0, 1, table.columnCount())
+            table.setSpan(row, 0, 1, 3)
             row += 1
             self.__print("", btnstr)
             self.__print("", "------------------------------------------")
 
             for sn in v["sn"]:
                 table.insertRow(row)
-                table.setItem(row, 0, QtGui.QTableWidgetItem("{0:02d}".format(sn["num"])))
-                table.setItem(row, 1, QtGui.QTableWidgetItem("{0:02.0f}".format(sn["sn"])))
+                table.setItem(row, 0, QtGui.QTableWidgetItem("{0[num]:02d}"
+                                                             .format(sn)))
+                table.setItem(row, 1, QtGui.QTableWidgetItem("{0[sn]:02.0f}"
+                                                             .format(sn)))
                 table.setItem(row, 2, QtGui.QTableWidgetItem(sn["time"]))
                 row += 1
-
-                self.__print("", "SN[{n:02d}]: {sn:02.0f}\t{time}" .format(
-                            n=sn["num"], sn=sn["sn"], time=sn["time"]))
-
-        self.setCentralWidget(table)
-        self.__print("", "\nEND")
+                self.__print("", "SN[{0[num]:02d}]: {0[sn]:02.0f}\t{0[time]}"
+                             .format(sn))
 
     def __get_readme(self):
         return \
