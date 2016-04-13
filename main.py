@@ -4,7 +4,8 @@
 import sys
 from PyQt4 import QtCore
 from PyQt4 import QtGui
-import sncheck  # my module
+import nmea_parse  # my module
+import nmea_graph  # my module
 
 
 class Logger(object):
@@ -23,18 +24,11 @@ class Logger(object):
             self.color = color
 
     def write(self, message):
-        # カーソルを文末に移動。
         self.editor.moveCursor(QtGui.QTextCursor.End)
-
-        # color変数に値があれば、元カラーを残してからテキストのカラーを
-        # 変更する。
         self.editor.setTextColor(self.color)
-
-        # 文末にテキストを追加。
         self.editor.insertPlainText(message)
 
-        # 出力オブジェクトが指定されている場合、そのオブジェクトにmessageを
-        # 書き出す。
+        # 出力オブジェクトが指定されている場合、そのオブジェクトにmessageを書き出す
         if self.out:
             self.out.write(message)
 
@@ -48,6 +42,10 @@ class MyGui(QtGui.QMainWindow):
     def __init__(self):
         super(MyGui, self).__init__()
 
+        self.__nmea = nmea_parse.NMEAParser()
+        self.__textEdit = QtGui.QTextEdit()
+        self.__table = QtGui.QTableWidget()
+        self.__tableBtn = list()
         self.__create()
 
     def __print(self, type, *objs):
@@ -70,9 +68,7 @@ class MyGui(QtGui.QMainWindow):
 
     def __create(self):
         self.__create_menu()
-        self.__textEdit = QtGui.QTextEdit()
         self.__create_log_area()
-        self.__table = QtGui.QTableWidget()
         self.__create_table_area()
         self.setGeometry(100, 100, 750, 500)
         self.show()
@@ -114,15 +110,14 @@ class MyGui(QtGui.QMainWindow):
     def __open(self):
         path = QtGui.QFileDialog.getExistingDirectory(self, 'Open Dir', '.')
         self.__textEdit.clear()
-        nmea = sncheck.NMEAData()
-        trip = nmea.check(nmea.concat_trip(path))
+        trip = self.__nmea.check(self.__nmea.concat_trip(path))
         self.__show_table(trip, self.__table)
 
     def __show_table(self, trip, table):
         table.clear()
         tableItem = list()
         self.__table.setRowCount(0)
-        self.__table.setHorizontalHeaderLabels(["st_num", "SN", "time-date"])
+        self.__table.setHorizontalHeaderLabels(["st_num", "S/N", "time-date"])
         # table.setSortingEnabled(True)
         row = 0
 
@@ -134,8 +129,12 @@ class MyGui(QtGui.QMainWindow):
             table.setItem(row, 0, tableItem[-1])
             btnstr = "tid: {id}  TTFF: {ttff}(s)  {t}".format(
                         id=tid, ttff=v["ttff"], t=v["ttffnmea"])
-            table.setCellWidget(row, 0, QtGui.QPushButton(btnstr))
+            btn = QtGui.QPushButton(btnstr)
+            table.setCellWidget(row, 0, btn)
+            graph = nmea_graph.NMEAGraph(tid, v["sn"])
+            btn.clicked.connect(graph.draw)
             table.setSpan(row, 0, 1, 3)
+            self.__tableBtn.append([btn, graph])
             row += 1
             self.__print("", btnstr)
             self.__print("", "------------------------------------------")

@@ -1,16 +1,14 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+import sys
 import re
 from os import listdir
-import sys
-import matplotlib.pyplot as plt
-import seaborn as sns
 from time import sleep
 
 
-class NMEAData(object):
-    u""" NMEAデータ確認用クラス
+class NMEAParser(object):
+    u""" NMEAパーサークラス
 
     指定ｳれたNORMALディレクトリ内のNMEAデータからSN等を算出する
     """
