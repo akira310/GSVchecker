@@ -13,8 +13,8 @@ class NMEAParser(object):
     指定ｳれたNORMALディレクトリ内のNMEAデータからSN等を算出する
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, isAll=0):
+        self.__isAll = isAll
 
     def concat_trip(self, path):
         u""" 各ファイルをtrip idごとにまとめる
@@ -54,9 +54,10 @@ class NMEAParser(object):
                     * key1: "ttff"
                     * key2: "ttffnmea"
                     * key3: "sn", value(list): SNリスト
-                        * key1:"time"
-                        * key2:"num"
-                        * key3:"sn"
+                        * key1:"num"    受信衛星数
+                        * key2:"time"   日時
+                        * key3:"used"   使用衛星数
+                        * key4:"sn"     S/N
         """
 
         data = dict()
@@ -78,47 +79,51 @@ class NMEAParser(object):
         return (trip)
 
     def __check_trip(self, pack):
-        trip = {"ttff": "", "ttffnmea": "", "sn": []}
+        all_gsv = list()
+        fixed = {"ttff": "", "ttffnmea": "", "sn": []}
 
         for cnt, p in enumerate(pack):
-            stnum = list()
-            snlist = list()
-            sn_dict = dict((x, list()) for x in ["time", "num", "sn"])
+            used = list()
+            sn = list()
+            sn_dict = dict((x, list()) for x in ["time", "num", "used", "sn"])
 
             for s in p:
-                sentence = s.replace("*", ",").split(",")
+                nmea = s.replace("*", ",").split(",")
 
-                if sentence[0] == "$GPRMC":
-                    stnum.clear()
-                    if sentence[2] == 'A' and sentence[3]:
+                if nmea[0] == "$GPRMC":
+                    used.clear()
+                    time = ""
+                    if nmea[1] and nmea[9]:
                         for i in range(0, 4, 2):
-                            sn_dict["time"] += sentence[1][i:i+2] + ':'
-                        sn_dict["time"] += sentence[1][4:6] + "(+UTC0) - "
+                            time += nmea[1][i:i+2] + ':'
+                        time += nmea[1][4:6] + "(+UTC0) - "
                         for i in range(0, 4, 2):
-                            sn_dict["time"] += sentence[9][i:i+2] + '/'
-                        sn_dict["time"] += sentence[9][4:6]
-                        sn_dict["time"] = ''.join(sn_dict["time"])
+                            time += nmea[9][i:i+2] + '/'
+                        time += nmea[9][4:6]
+                        time = ''.join(time)
 
-                        if not trip["ttff"]:
-                            trip["ttff"] = str(int(cnt/2))
-                            trip["ttffnmea"] = sn_dict["time"]
+                    if nmea[2] == 'A' and nmea[3]:
+                        sn_dict["time"] = time
 
-                elif trip["ttff"] and sentence[0] == "$GPGSA":
-                    if sentence[2] != 1:
-                        stnum = sentence[3:3+12]
-                    while "" in stnum:
-                        del stnum[stnum.index("")]
+                        if not fixed["ttff"]:
+                            fixed["ttff"] = str(int(cnt/2))
+                            fixed["ttffnmea"] = sn_dict["time"]
 
-                elif trip["ttff"] and len(stnum) and sentence[0] == "$GPGSV":
-                    for pos in range(4, len(sentence), 4):
-                        if sentence[pos] in stnum:
-                            snlist.append(sentence[pos+3])
+                elif nmea[0] == "$GPGSA" and (fixed["ttff"] or self.__isAll):
+                    used = nmea[3:3+12] if nmea[2] != 1 else []
+                    while "" in used:
+                        del used[used.index("")]
 
-            if snlist:
-                sn_dict["num"] = len(stnum)
-                sn_dict["sn"] = self.__average_sn(snlist)
-                trip["sn"].append(sn_dict)
-        return trip
+                elif nmea[0] == "$GPGSV" and (fixed["ttff"] and len(used)):
+                    sn_dict["num"] = int(nmea[3])
+                    for pos in range(4, len(nmea), 4):
+                        sn.append(nmea[pos+3]) if nmea[pos] in used else ""
+
+            if sn:
+                sn_dict["used"] = len(used)
+                sn_dict["sn"] = self.__average_sn(sn)
+                fixed["sn"].append(sn_dict)
+        return fixed
 
     def __average_sn(self, snlist):
         sn = ""

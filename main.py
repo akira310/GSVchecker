@@ -18,10 +18,7 @@ class Logger(object):
         self.editor = editor    # 結果出力用エディタ
         self.out = out       # 標準出力・標準エラーなどの出力オブジェクト
         # 結果出力時の色(Noneが指定されている場合、エディタの現在の色を入れる)
-        if not color:
-            self.color = editor.textColor()
-        else:
-            self.color = color
+        self.color = editor.textColor() if not color else color
 
     def write(self, message):
         self.editor.moveCursor(QtGui.QTextCursor.End)
@@ -29,8 +26,7 @@ class Logger(object):
         self.editor.insertPlainText(message)
 
         # 出力オブジェクトが指定されている場合、そのオブジェクトにmessageを書き出す
-        if self.out:
-            self.out.write(message)
+        self.out.write(message) if self.out else ""
 
 
 class MyGui(QtGui.QMainWindow):
@@ -42,7 +38,6 @@ class MyGui(QtGui.QMainWindow):
     def __init__(self):
         super(MyGui, self).__init__()
 
-        self.__nmea = nmea_parse.NMEAParser()
         self.__textEdit = QtGui.QTextEdit()
         self.__table = QtGui.QTableWidget()
         self.__tableBtn = list()
@@ -101,23 +96,26 @@ class MyGui(QtGui.QMainWindow):
 
     def __create_table_area(self):
         self.__table.setRowCount(0)
-        self.__table.setColumnCount(3)
-        self.__table.setColumnWidth(2, 250)
-        self.__table.setHorizontalHeaderLabels(["st_num", "SN", "time-date"])
+        self.__table.setColumnCount(4)
+        self.__table.setColumnWidth(3, 250)
+        self.__table.setHorizontalHeaderLabels(
+                ["st_num", "usednum", "SN", "time-date"])
         self.__table.verticalHeader().setVisible(False)
         self.setCentralWidget(self.__table)
 
     def __open(self):
         path = QtGui.QFileDialog.getExistingDirectory(self, 'Open Dir', '.')
         self.__textEdit.clear()
-        trip = self.__nmea.check(self.__nmea.concat_trip(path))
+        nmea = nmea_parse.NMEAParser()
+        trip = nmea.check(nmea.concat_trip(path))
         self.__show_table(trip, self.__table)
 
     def __show_table(self, trip, table):
         table.clear()
         tableItem = list()
         self.__table.setRowCount(0)
-        self.__table.setHorizontalHeaderLabels(["st_num", "S/N", "time-date"])
+        self.__table.setHorizontalHeaderLabels(
+                ["st_num", "usednum", "S/N", "time-date"])
         # table.setSortingEnabled(True)
         row = 0
 
@@ -125,6 +123,7 @@ class MyGui(QtGui.QMainWindow):
             self.__print("", "==========================================")
             tableItem.append(QtGui.QTableWidgetItem())
 
+            # TODO: implementaiton. using __insert_row() and lambda
             table.insertRow(row)
             table.setItem(row, 0, tableItem[-1])
             btnstr = "tid: {id}  TTFF: {ttff}(s)  {t}".format(
@@ -133,7 +132,7 @@ class MyGui(QtGui.QMainWindow):
             table.setCellWidget(row, 0, btn)
             graph = nmea_graph.NMEAGraph(tid, v["sn"])
             btn.clicked.connect(graph.draw)
-            table.setSpan(row, 0, 1, 3)
+            table.setSpan(row, 0, 1, table.columnCount())
             self.__tableBtn.append([btn, graph])
             row += 1
             self.__print("", btnstr)
@@ -143,12 +142,22 @@ class MyGui(QtGui.QMainWindow):
                 table.insertRow(row)
                 table.setItem(row, 0, QtGui.QTableWidgetItem("{0[num]:02d}"
                                                              .format(sn)))
-                table.setItem(row, 1, QtGui.QTableWidgetItem("{0[sn]:02.0f}"
+                table.setItem(row, 1, QtGui.QTableWidgetItem("{0[used]:02d}"
                                                              .format(sn)))
-                table.setItem(row, 2, QtGui.QTableWidgetItem(sn["time"]))
+                table.setItem(row, 2, QtGui.QTableWidgetItem("{0[sn]:02.0f}"
+                                                             .format(sn)))
+                table.setItem(row, 3, QtGui.QTableWidgetItem(sn["time"]))
                 row += 1
-                self.__print("", "SN[{0[num]:02d}]: {0[sn]:02.0f}\t{0[time]}"
+                self.__print("", "SN[{0[used]:02d}]: {0[sn]:02.0f}\t{0[time]}"
                              .format(sn))
+
+            table.insertRow(row)
+            table.setItem(row, 0, QtGui.QTableWidgetItem(" "))
+            table.setSpan(row, 0, 1, table.columnCount())
+            row += 1
+
+    def __insert_row(self, table, func):
+        pass
 
     def __get_readme(self):
         return \

@@ -16,11 +16,11 @@ class NMEAGraph(object):
 
     def __init__(self, tid, sn_dict):
         self.__tid = tid
-        self.__num = list()
+        self.__used = list()
         self.__sn = list()
         self.__time = list()
         for sn in sn_dict:
-            self.__num.append(sn["num"])
+            self.__used.append(sn["used"])
             self.__sn.append(sn["sn"])
             self.__time.append(sn["time"])
 
@@ -35,8 +35,8 @@ class NMEAGraph(object):
         fig.suptitle("trip id: {0}".format(self.__tid))
 
         ax11 = fig.add_subplot(1, 1, 1)
-        ax11.plot(self.__num, label="st_num", color=palette[0])
-        ax11.set_ylabel("st_num")
+        ax11.plot(self.__used, label="st_used", color=palette[0])
+        ax11.set_ylabel("st_used")
         ax11.set_ylim(0, 12)
         tw11 = ax11.twinx()
         tw11.plot(self.__sn, label="S/N", color=palette[1])
