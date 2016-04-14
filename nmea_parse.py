@@ -5,6 +5,7 @@ import sys
 import re
 from os import listdir
 from time import sleep
+import logging
 
 
 class NMEAParser(object):
@@ -14,7 +15,8 @@ class NMEAParser(object):
     """
 
     def __init__(self, isAll=0):
-        self.__isAll = isAll
+        pass
+        self.__log = logging.getLogger(__name__)
 
     def concat_trip(self, path):
         u""" 各ファイルをtrip idごとにまとめる
@@ -51,13 +53,17 @@ class NMEAParser(object):
         Returns:
             trip: tripIDごとのチェック結果dict
                  * key1: tripID, value(list): 対応tripIDのチェック結果dict
-                    * key1: "ttff"
-                    * key2: "ttffnmea"
-                    * key3: "sn", value(list): SNリスト
-                        * key1:"num"    受信衛星数
-                        * key2:"time"   日時
-                        * key3:"used"   使用衛星数
-                        * key4:"sn"     S/N
+                    * key1: "fixed"
+                        * key1: "ttff"
+                        * key2: "ttffnmea"
+                        * key3: "sn", value(list): SNリスト
+                            * key1:"num"    受信衛星数
+                            * key2:"time"   日時
+                            * key3:"used"   使用衛星数
+                            * key4:"sn"     S/N
+                    * key2: "gsv"
+                            * key1:"num"    受信衛星数
+                            * key4:"sn"     S/N
         """
 
         data = dict()
@@ -79,16 +85,19 @@ class NMEAParser(object):
         return (trip)
 
     def __check_trip(self, pack):
-        all_gsv = list()
+        gsv = list()
         fixed = {"ttff": "", "ttffnmea": "", "sn": []}
 
         for cnt, p in enumerate(pack):
             used = list()
-            sn = list()
-            sn_dict = dict((x, list()) for x in ["time", "num", "used", "sn"])
+            usedsn = list()
+            gsvsn = list()
+            fix_dict = dict((x, list()) for x in ["time", "num", "used", "sn"])
+            gsv_dict = dict((x, list()) for x in ["num", "sn"])
 
             for s in p:
                 nmea = s.replace("*", ",").split(",")
+                num = 0
 
                 if nmea[0] == "$GPRMC":
                     used.clear()
@@ -103,36 +112,48 @@ class NMEAParser(object):
                         time = ''.join(time)
 
                     if nmea[2] == 'A' and nmea[3]:
-                        sn_dict["time"] = time
+                        fix_dict["time"] = time
 
                         if not fixed["ttff"]:
                             fixed["ttff"] = str(int(cnt/2))
-                            fixed["ttffnmea"] = sn_dict["time"]
+                            fixed["ttffnmea"] = fix_dict["time"]
 
-                elif nmea[0] == "$GPGSA" and (fixed["ttff"] or self.__isAll):
+                elif nmea[0] == "$GPGSA" and fixed["ttff"]:
                     used = nmea[3:3+12] if nmea[2] != 1 else []
                     while "" in used:
                         del used[used.index("")]
 
-                elif nmea[0] == "$GPGSV" and (fixed["ttff"] and len(used)):
-                    sn_dict["num"] = int(nmea[3])
-                    for pos in range(4, len(nmea), 4):
-                        sn.append(nmea[pos+3]) if nmea[pos] in used else ""
+                elif nmea[0] == "$GPGSV":
+                    num = fix_dict["num"] = int(nmea[3])
+                    try:
+                        for i in range(4, len(nmea), 4):
+                            usedsn.append(nmea[i+3]) if nmea[i] in used else ""
+                            gsvsn.append(nmea[i+3]) if nmea[i] else ""
+                    except Exception:
+                        pass
 
-            if sn:
-                sn_dict["used"] = len(used)
-                sn_dict["sn"] = self.__average_sn(sn)
-                fixed["sn"].append(sn_dict)
-        return fixed
+            if num > 0:
+                gsv_dict["num"] = num
+                gsv_dict["sn"] = self.__average_sn(gsvsn)
+                gsv.append(gsv_dict)
 
-    def __average_sn(self, snlist):
-        sn = ""
-        try:
-            sn = sum(list(map(int, snlist))) / len(snlist)
-        except Exception as e:
-            warning(e)
+            if len(used):
+                fix_dict["used"] = len(used)
+                fix_dict["sn"] = self.__average_sn(usedsn)
+                fixed["sn"].append(fix_dict)
 
-        return sn
+        return {"fixed": fixed, "gsv": gsv}
+
+    def __average_sn(self, baselist):
+        avrg = 0
+        snlist = [x for x in baselist if x]
+        if len(snlist):
+            try:
+                avrg = sum(list(map(int, snlist))) // len(snlist)
+            except Exception as e:
+                self.__log.warn(e)
+
+        return avrg
 
     def __get_lines(self, files):
         lines = list()
@@ -144,9 +165,6 @@ class NMEAParser(object):
         return lines
 
 
-def warning(*objs):
-    print("WARNING: ", *objs, file=sys.stderr)
-
 if __name__ == '__main__':
-    warning("this file is not entry point !!")
+    print("WARN: this file is not entry point !!", file=sys.stderr)
     sleep(5)

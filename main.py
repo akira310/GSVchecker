@@ -6,9 +6,11 @@ from PyQt4 import QtCore
 from PyQt4 import QtGui
 import nmea_parse  # my module
 import nmea_graph  # my module
+import logging
+import logging.config
 
 
-class Logger(object):
+class GuiLogger(object):
     u""" GUIへのログ表示用クラス
 
     GUIへ標準出力、エラー出力をパイプする
@@ -38,22 +40,10 @@ class MyGui(QtGui.QMainWindow):
     def __init__(self):
         super(MyGui, self).__init__()
 
-        self.__textEdit = QtGui.QTextEdit()
+        self.__text = QtGui.QTextEdit()
         self.__table = QtGui.QTableWidget()
         self.__tableBtn = list()
         self.__create()
-
-    def __print(self, type, *objs):
-        printtype = {
-                "ERR": lambda *objs: print("ERROR: ", *objs, file=sys.stderr),
-                "WARN": lambda *objs: print("WARN: ", *objs, file=sys.stderr),
-                "INFO": lambda *objs: print(*objs, file=sys.stdout),
-        }
-
-        if type in printtype:
-            printtype[type](*objs)
-        else:
-            print(*objs, file=sys.stdout)
 
     def closeEvent(self, event):
         u""" closeボタン押下時の処理 """
@@ -84,15 +74,15 @@ class MyGui(QtGui.QMainWindow):
     def __create_log_area(self):
         self.top_dock = QtGui.QDockWidget("log", self)
         self.top_dock.setFixedHeight(100)
-        self.top_dock.setWidget(self.__textEdit)
+        self.top_dock.setWidget(self.__text)
         self.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.top_dock)
 
-        self.__textEdit.setReadOnly(True)
-        sys.stdout = Logger(self.__textEdit, sys.stdout)
-        sys.stderr = Logger(self.__textEdit, sys.stderr, QtGui.QColor("red"))
+        self.__text.setReadOnly(True)
+        sys.stdout = GuiLogger(self.__text, sys.stdout)
+        sys.stderr = GuiLogger(self.__text, sys.stderr, QtGui.QColor("red"))
 
-        self.__textEdit.setTextColor(QtGui.QColor("blue"))
-        self.__textEdit.setText(self.__get_readme())
+        self.__text.setTextColor(QtGui.QColor("blue"))
+        self.__text.setText(self.__get_readme())
 
     def __create_table_area(self):
         self.__table.setRowCount(0)
@@ -105,7 +95,7 @@ class MyGui(QtGui.QMainWindow):
 
     def __open(self):
         path = QtGui.QFileDialog.getExistingDirectory(self, 'Open Dir', '.')
-        self.__textEdit.clear()
+        self.__text.clear()
         nmea = nmea_parse.NMEAParser()
         trip = nmea.check(nmea.concat_trip(path))
         self.__show_table(trip, self.__table)
@@ -120,25 +110,26 @@ class MyGui(QtGui.QMainWindow):
         row = 0
 
         for tid, v in trip.items():
-            self.__print("", "==========================================")
+            fixed = v["fixed"]
+            print("==========================================")
             tableItem.append(QtGui.QTableWidgetItem())
 
             # TODO: implementaiton. using __insert_row() and lambda
             table.insertRow(row)
             table.setItem(row, 0, tableItem[-1])
             btnstr = "tid: {id}  TTFF: {ttff}(s)  {t}".format(
-                        id=tid, ttff=v["ttff"], t=v["ttffnmea"])
+                        id=tid, ttff=fixed["ttff"], t=fixed["ttffnmea"])
             btn = QtGui.QPushButton(btnstr)
             table.setCellWidget(row, 0, btn)
-            graph = nmea_graph.NMEAGraph(tid, v["sn"])
+            graph = nmea_graph.NMEAGraph(tid, fixed, v["gsv"])
             btn.clicked.connect(graph.draw)
             table.setSpan(row, 0, 1, table.columnCount())
             self.__tableBtn.append([btn, graph])
             row += 1
-            self.__print("", btnstr)
-            self.__print("", "------------------------------------------")
+            print(btnstr)
+            print("------------------------------------------")
 
-            for sn in v["sn"]:
+            for sn in fixed["sn"]:
                 table.insertRow(row)
                 table.setItem(row, 0, QtGui.QTableWidgetItem("{0[num]:02d}"
                                                              .format(sn)))
@@ -148,8 +139,8 @@ class MyGui(QtGui.QMainWindow):
                                                              .format(sn)))
                 table.setItem(row, 3, QtGui.QTableWidgetItem(sn["time"]))
                 row += 1
-                self.__print("", "SN[{0[used]:02d}]: {0[sn]:02.0f}\t{0[time]}"
-                             .format(sn))
+                print("SN[{0[used]:02d}]: {0[sn]:02.0f}\t{0[time]}"
+                      .format(sn))
 
             table.insertRow(row)
             table.setItem(row, 0, QtGui.QTableWidgetItem(" "))
@@ -169,6 +160,7 @@ class MyGui(QtGui.QMainWindow):
 def main():
     app = QtGui.QApplication(sys.argv)
     ex = MyGui()
+    logging.config.fileConfig('./logging.cfg', disable_existing_loggers=False)
     sys.exit(app.exec_())
 
 
