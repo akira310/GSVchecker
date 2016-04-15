@@ -114,7 +114,7 @@ class MyGui(QtGui.QMainWindow):
             print("==========================================")
             tableItem.append(QtGui.QTableWidgetItem())
 
-            # TODO: implementaiton. using __insert_row() and lambda
+            # TODO: implementaiton.  using __insert_row() and lambda
             table.insertRow(row)
             table.setItem(row, 0, tableItem[-1])
             btnstr = "tid: {id}  TTFF: {ttff}(s)  {t}".format(
@@ -147,8 +147,10 @@ class MyGui(QtGui.QMainWindow):
             table.setSpan(row, 0, 1, table.columnCount())
             row += 1
 
-    def __insert_row(self, table, func):
-        pass
+    def __insert_row(self, table, row, func):
+        table.insertRow(row)
+        func
+        return row+1
 
     def __get_readme(self):
         return \

@@ -63,7 +63,8 @@ class NMEAParser(object):
                             * key4:"sn"     S/N
                     * key2: "gsv"
                             * key1:"num"    受信衛星数
-                            * key4:"sn"     S/N
+                            * key2:"sn"     S/N
+                            * key3:"fix"    fix or not
         """
 
         data = dict()
@@ -93,7 +94,7 @@ class NMEAParser(object):
             usedsn = list()
             gsvsn = list()
             fix_dict = dict((x, list()) for x in ["time", "num", "used", "sn"])
-            gsv_dict = dict((x, list()) for x in ["num", "sn"])
+            gsv_dict = dict((x, list()) for x in ["num", "sn", "fix"])
 
             for s in p:
                 nmea = s.replace("*", ",").split(",")
@@ -102,6 +103,7 @@ class NMEAParser(object):
                 if nmea[0] == "$GPRMC":
                     used.clear()
                     time = ""
+                    gsv_dict["fix"] = 0
                     if nmea[1] and nmea[9]:
                         for i in range(0, 4, 2):
                             time += nmea[1][i:i+2] + ':'
@@ -112,6 +114,7 @@ class NMEAParser(object):
                         time = ''.join(time)
 
                     if nmea[2] == 'A' and nmea[3]:
+                        gsv_dict["fix"] = 1
                         fix_dict["time"] = time
 
                         if not fixed["ttff"]:
