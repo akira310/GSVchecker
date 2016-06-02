@@ -67,17 +67,13 @@ class NMEAParser(object):
                             * key3:"fix"    fix or not
         """
 
-        data = dict()
         trip = dict()
 
         for k, v in dict_trip.items():
-            data[k] = self.__get_lines(v)
-
-        for k, v in data.items():
             pack = list()
             p = list()
             r = re.compile("^\$GPRMC")
-            for d in v:
+            for d in self.__get_lines(v):
                 if r.search(d) and len(p) > 0:
                     pack.append(p[:])
                     p.clear()

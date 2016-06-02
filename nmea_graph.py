@@ -57,7 +57,7 @@ class NMEAGraph(object):
         ax11.set_ylabel("st_used")
         ax11.set_ylim(0, 20)
         tw11 = ax11.twinx()
-        tw11.plot(self.__usedsn, label="S/N", color=palette[1])
+        tw11.plot(self.__usedsn, label="S/N", color=palette[2])
         tw11.set_ylabel("S/N")
         tw11.set_ylim(20, 45)
         # tw11.grid(ls='--')
@@ -66,16 +66,17 @@ class NMEAGraph(object):
         ax11.legend(h1+h2, l1+l2, loc="upper left")
 
         ax21 = fig.add_subplot(2, 1, 2)
-        ax21.set_title("ALL  avg.[num: {0} S/N: {1}]"
-                       .format(sum(self.__gsvnum)//len(self.__gsvnum),
-                               sum(self.__gsvsn)//len(self.__gsvsn)))
+        ax21.set_title("ALL  num[avg:{avg} max:{max} min:{min}] avg.S/N: {sn}]"
+                       .format(avg=sum(self.__gsvnum)//len(self.__gsvnum),
+                               max=max(self.__gsvnum), min=min(self.__gsvnum),
+                               sn=sum(self.__gsvsn)//len(self.__gsvsn)))
         ax21.set_xlabel("t (0.5s)")
-        ax21.plot(self.__gsvnum, label="st_num", color=palette[2])
+        ax21.plot(self.__gsvnum, label="st_num", color=palette[0])
         ax21.set_ylabel("st_num")
         ax21.set_ylim(0, 22)
         # ax21.grid(ls='--')
         tw21 = ax21.twinx()
-        tw21.plot(self.__gsvsn, label="S/N", color=palette[3])
+        tw21.plot(self.__gsvsn, label="S/N", color=palette[2])
         tw21.set_ylabel("S/N")
         tw21.set_ylim(0, 45)
         tww21 = ax21.twinx()
