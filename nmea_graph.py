@@ -50,8 +50,8 @@ class NMEAGraph(object):
         ax11 = fig.add_subplot(2, 1, 1)
         ax11.set_title("FIXED  TTFF: {0} sec  avg.[usednum: {1} S/N: {2}]"
                        .format(self.__ttff,
-                               sum(self.__used)//len(self.__used),
-                               sum(self.__usedsn)//len(self.__usedsn)))
+                               sum(self.__used)//len(self.__used) if (len(self.__used)) else 0,
+                               sum(self.__usedsn)//len(self.__usedsn) if (len(self.__used)) else 0))
         ax11.set_xlabel("count num")
         ax11.plot(self.__used, label="st_used", color=palette[0])
         ax11.set_ylabel("st_used")
@@ -66,7 +66,7 @@ class NMEAGraph(object):
         ax11.legend(h1+h2, l1+l2, loc="upper left")
 
         ax21 = fig.add_subplot(2, 1, 2)
-        ax21.set_title("ALL  num[avg:{avg} max:{max} min:{min}] avg.S/N: {sn}]"
+        ax21.set_title("ALL  num[avg:{avg} max:{max} min:{min}] avg.S/N: {sn}"
                        .format(avg=sum(self.__gsvnum)//len(self.__gsvnum),
                                max=max(self.__gsvnum), min=min(self.__gsvnum),
                                sn=sum(self.__gsvsn)//len(self.__gsvsn)))
