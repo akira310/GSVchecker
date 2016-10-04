@@ -3,7 +3,7 @@
 
 import sys
 import re
-from os import listdir
+import os
 from time import sleep
 import logging
 
@@ -29,13 +29,13 @@ class NMEAParser(object):
                  * key1: tripID, value(list): 対応tripIDのファイルフルパス
         """
 
-        path += "\\SYSTEM\\NMEA\\NORMAL\\"
-        files = listdir(path)
+        path = os.path.join(path, "SYSTEM", "NMEA", "NORMAL")
+        files = os.listdir(path)
         files.sort()
         dict_trip = {}
 
         for file in files:
-            file = path + file
+            file = os.path.join(path, file)
             with open(file, "r") as f:
                 key = f.readline().split(",")[-1].rstrip()
                 if key not in dict_trip:
