@@ -109,7 +109,7 @@ class MyGui(QtGui.QMainWindow):
         # table.setSortingEnabled(True)
         row = 0
 
-        for tid, v in trip.items():
+        for i, (tid, v) in enumerate(trip.items()):
             fixed = v["fixed"]
             print("==========================================")
             tableItem.append(QtGui.QTableWidgetItem())
@@ -117,8 +117,9 @@ class MyGui(QtGui.QMainWindow):
             # TODO: implementaiton.  using __insert_row() and lambda
             table.insertRow(row)
             table.setItem(row, 0, tableItem[-1])
-            btnstr = "tid: {id}  TTFF: {ttff}(s)  {t}".format(
-                        id=tid, ttff=fixed["ttff"], t=fixed["ttffnmea"])
+            btnstr = "tid({i}/{n}): {id}  TTFF: {ttff}(s)  {t}".format(
+                      i=i+1, n=len(trip), id=tid,
+                      ttff=fixed["ttff"], t=fixed["ttffnmea"])
             btn = QtGui.QPushButton(btnstr)
             table.setCellWidget(row, 0, btn)
             graph = nmea_graph.NMEAGraph(tid, fixed, v["gsv"])
