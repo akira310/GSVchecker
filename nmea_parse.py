@@ -16,7 +16,7 @@ class NMEAParser(object):
 
     def __init__(self, isAll=0):
         pass
-        self.__log = logging.getLogger(__name__)
+        self._log = logging.getLogger(__name__)
 
     def concat_trip(self, path):
         u""" 各ファイルをtrip idごとにまとめる
@@ -73,15 +73,15 @@ class NMEAParser(object):
             pack = list()
             p = list()
             r = re.compile("^\$GPRMC")
-            for d in self.__get_lines(v):
+            for d in self._get_lines(v):
                 if r.search(d) and len(p) > 0:
                     pack.append(p[:])
                     p.clear()
                 p.append(d)
-            trip[k] = self.__check_trip(pack)
+            trip[k] = self._check_trip(pack)
         return (trip)
 
-    def __check_trip(self, pack):
+    def _check_trip(self, pack):
         gsv = list()
         fixed = {"ttff": "", "ttffnmea": "", "sn": []}
 
@@ -133,28 +133,28 @@ class NMEAParser(object):
 
             if num > 0:
                 gsv_dict["num"] = num
-                gsv_dict["sn"] = self.__average_sn(gsvsn)
+                gsv_dict["sn"] = self._average_sn(gsvsn)
                 gsv.append(gsv_dict)
 
             if len(used):
                 fix_dict["used"] = len(used)
-                fix_dict["sn"] = self.__average_sn(usedsn)
+                fix_dict["sn"] = self._average_sn(usedsn)
                 fixed["sn"].append(fix_dict)
 
         return {"fixed": fixed, "gsv": gsv}
 
-    def __average_sn(self, baselist):
+    def _average_sn(self, baselist):
         avrg = 0
         snlist = [x for x in baselist if x]
         if len(snlist):
             try:
                 avrg = sum(list(map(int, snlist))) // len(snlist)
             except Exception as e:
-                self.__log.warn(e)
+                self._log.warn(e)
 
         return avrg
 
-    def __get_lines(self, files):
+    def _get_lines(self, files):
         lines = list()
         r = re.compile("^\$GP")
         for file in files:
