@@ -44,11 +44,33 @@ class NMEAParser(object):
 
         return dict_trip
 
-    def check(self, dict_trip):
+    def pack(self, files):
+        u""" NMEAセンテンスをRMC毎にまとめる
+
+        Args:
+            files: nmea files
+
+        Returns:
+            packed: RMC毎にまとめたセンテンスlist
+        """
+
+        packed = list()
+        packing = list()
+        r = re.compile("^\$GPRMC")
+
+        for d in self._get_gpslines(files):
+            if r.search(d) and len(packing) > 0:
+                packed.append(packing[:])
+                packing.clear()
+            packing.append(d)
+
+        return (packed)
+
+    def parse_packdata(self, packed):
         u""" tripIDごとのTTFF,SN等を調べる
 
         Args:
-            dict_trip: self.concat_trip()で得れるdict
+            packed: self.pack()で得れるlist
 
         Returns:
             trip: tripIDごとのチェック結果dict
@@ -67,19 +89,7 @@ class NMEAParser(object):
                             * key3:"fix"    fix or not
         """
 
-        trip = dict()
-
-        for k, v in dict_trip.items():
-            pack = list()
-            p = list()
-            r = re.compile("^\$GPRMC")
-            for d in self._get_lines(v):
-                if r.search(d) and len(p) > 0:
-                    pack.append(p[:])
-                    p.clear()
-                p.append(d)
-            trip[k] = self._check_trip(pack)
-        return (trip)
+        return (self._check_trip(packed))
 
     def _check_trip(self, pack):
         gsv = list()
@@ -154,7 +164,7 @@ class NMEAParser(object):
 
         return avrg
 
-    def _get_lines(self, files):
+    def _get_gpslines(self, files):
         lines = list()
         r = re.compile("^\$GP")
         for file in files:

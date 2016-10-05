@@ -97,7 +97,10 @@ class MyGui(QtGui.QMainWindow):
         path = QtGui.QFileDialog.getExistingDirectory(self, 'Open Dir', '.')
         self._text.clear()
         nmea = nmea_parse.NMEAParser()
-        trip = nmea.check(nmea.concat_trip(path))
+        trip = dict()
+        for tid, files in nmea.concat_trip(path).items():
+            trip[tid] = nmea.parse_packdata(nmea.pack(files))
+
         self._show_table(trip)
 
     def _show_table(self, trip):
