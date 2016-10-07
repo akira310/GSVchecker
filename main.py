@@ -99,15 +99,45 @@ class MyGui(QtGui.QMainWindow):
         self._text.clear()
         nmea = nmea_parse.NMEAParser()
         trip = dict()
+        trip2 = dict()
         print(path)
         for tid, files in nmea.concat_trip(path).items():
             packdata = nmea.pack(files)
-            # trip[tid] = nmea.parse_packdata(packdata)
-            # trip[tid] = nmea.parse_packdata2(packdata)
-            trip[tid] = packdata
+            trip[tid] = nmea.parse_packdata(packdata)
+            trip2[tid] = nmea.parse_packdata2(packdata, onlygsa=True)
+            # trip[tid] = packdata
 
-        # self._show_table(trip)
-        self._show_table2(trip)
+        self._show_table(trip)
+        self._show_table3(trip2)
+
+    def _show_table3(self, trip):
+        for tid, packlist in trip.items():
+            # print(parsed)
+            used = list()
+            for k, v in packlist[-1].items():
+                if "GSA" in k:
+                    p = pynmea2.parse("{}".format(v))
+                    print(p.sv_id01)
+                    print(p.sv_id02)
+                    print(p.sv_id03)
+                    print(p.sv_id04)
+                    print(p.sv_id05)
+                    print(p.sv_id06)
+                    print(p.sv_id07)
+                    print(p.sv_id08)
+                    print(p.sv_id09)
+                    print(p.sv_id10)
+                    print(p.sv_id11)
+                    print(p.sv_id12)
+                elif "GSV" in k:
+                    # print("\"{}\"".format(v))
+                    p = pynmea2.parse("{}".format(v))
+                    print("No.", p.sv_prn_num_1, "\tel.", p.elevation_deg_1, "\taz",p.azimuth_1, "\tcn",p.snr_1)
+                    print("No.", p.sv_prn_num_2, "\tel.", p.elevation_deg_2, "\taz",p.azimuth_2, "\tcn",p.snr_2)
+                    print("No.", p.sv_prn_num_3, "\tel.", p.elevation_deg_3, "\taz",p.azimuth_3, "\tcn",p.snr_3)
+                    print("No.", p.sv_prn_num_4, "\tel.", p.elevation_deg_4, "\taz",p.azimuth_4, "\tcn",p.snr_4)
+
+
 
     def _show_table2(self, trip):
         for tid, packlist in trip.items():

@@ -64,7 +64,7 @@ class NMEAParser(object):
                 packing.clear()
             packing.append(d)
 
-        return (packed)
+        return (packed[1::2])
 
     def parse_packdata(self, packed):
         u""" tripIDごとのTTFF,SN等を調べる
