@@ -6,6 +6,7 @@ from PyQt4 import QtCore
 from PyQt4 import QtGui
 import nmea_parse  # my module
 import nmea_graph  # my module
+import pynmea2
 import logging
 import logging.config
 
@@ -98,10 +99,38 @@ class MyGui(QtGui.QMainWindow):
         self._text.clear()
         nmea = nmea_parse.NMEAParser()
         trip = dict()
+        print(path)
         for tid, files in nmea.concat_trip(path).items():
-            trip[tid] = nmea.parse_packdata(nmea.pack(files))
+            packdata = nmea.pack(files)
+            # trip[tid] = nmea.parse_packdata(packdata)
+            # trip[tid] = nmea.parse_packdata2(packdata)
+            trip[tid] = packdata
 
-        self._show_table(trip)
+        # self._show_table(trip)
+        self._show_table2(trip)
+
+    def _show_table2(self, trip):
+        for tid, packlist in trip.items():
+            d2 = 0
+            lost = 0
+            gga = 0
+            for pack in packlist:
+                # print(pack)
+                for p in pack:
+                    if "GGA" in p:
+                        msg = pynmea2.parse(p)
+                        gga += 1
+                        if int(msg.num_sats ) < 4:
+                            # print(msg.num_sats, p)
+                            d2 += 1
+
+            num = len(packlist)/2
+            fix = gga/2
+            d2 /= 2
+            lost = num - fix
+            per = lambda x, y: x*100/y
+            print("==== {:.2f}min 3d[{}]:{:.2f}% 2d[{}]:{:.2f}% lost[{}]:{:.2f}% ===="
+                    .format(num/60, fix, per(fix, num)-per(d2, num), d2, per(d2, num), lost, per(lost, num)))
 
     def _show_table(self, trip):
         self._table.clear()

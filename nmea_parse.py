@@ -5,8 +5,8 @@ import sys
 import re
 import os
 from time import sleep
+import pynmea2
 import logging
-
 
 class NMEAParser(object):
     u""" NMEAパーサークラス
@@ -90,6 +90,47 @@ class NMEAParser(object):
         """
 
         return (self._check_trip(packed))
+
+    def parse_packdata2(self, packedlist, onlygsa=False):
+        parsed = list()
+        for pack in packedlist:
+            for sentence in pack:
+                if onlygsa:
+                    if "GSA" in sentence:
+                        parsed.append(self.parse_nmea(pack))
+                else:
+                    parsed.append(self.parse_nmea(pack))
+
+        # self._debugprint(parsed)
+        return parsed
+
+    def _debugprint(self, parsed):
+        for k, v in parsed[-1].items():
+            print(k, v)
+
+        # for p in parsed:
+        #     for k, v in p.items():
+        #         print(k, v)
+        #     break
+
+    def parse_nmea(self, pack):
+        parsedict = dict()
+        gsv = 1
+        mygsv = list()
+        for sentence in pack:
+            # print(sentence)
+            try:
+                nmea = pynmea2.parse(sentence)
+            except:
+                return
+            if nmea.sentence_type == "GSV":
+                parsedict[nmea.sentence_type+str(gsv)] = nmea
+                gsv += 1
+            else:
+                parsedict[nmea.sentence_type] = nmea
+
+        return parsedict
+
 
     def _check_trip(self, pack):
         gsv = list()
