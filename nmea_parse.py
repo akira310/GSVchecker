@@ -8,14 +8,14 @@ from time import sleep
 import pynmea2
 import logging
 
+
 class NMEAParser(object):
     u""" NMEAパーサークラス
 
     指定ｳれたNORMALディレクトリ内のNMEAデータからSN等を算出する
     """
 
-    def __init__(self, isAll=0):
-        pass
+    def __init__(self):
         self._log = logging.getLogger(__name__)
 
     def concat_trip(self, path):
@@ -43,6 +43,62 @@ class NMEAParser(object):
                 dict_trip[key].append(file)
 
         return dict_trip
+
+    def parse(self, file):
+        parsed = list()
+
+        with open(file, "r") as f:
+            r = re.compile("(^\$..)(RMC|GSA|GSV)(.*)")
+            line = f.readline()
+
+            while line:
+                match = r.match(line)
+                if match:
+                    toker = match.group(2)
+                    if toker == "RMC":
+                        parsed.append(dict())
+                        parsed[-1][toker] = self._parse_nmea(line)
+                    elif toker == "GSV" and "GSV" in parsed[-1]:
+                        parsed[-1]["GSV"]["sv"] += self._parse_nmea(line)["sv"]
+                    else:
+                        parsed[-1][toker] = self._parse_nmea(line)
+                line = f.readline()
+
+        return parsed
+
+    def _parse_nmea(self, sentence):
+        nmea = msg = pynmea2.parse(sentence)
+        if msg.sentence_type == "GSA":
+            gsa = dict()
+            gsa["mode"] = msg.mode
+            gsa["fixtype"] = msg.mode_fix_type
+            gsa["pdop"] = msg.pdop
+            gsa["hdop"] = msg.hdop
+            gsa["vdop"] = msg.vdop
+            svidlist = list()
+            for i in range(1, 13):
+                svid = eval("msg.sv_id{:02d}".format(i))
+                if svid:
+                    svidlist.append(svid)
+                else:
+                    break
+            gsa["sv"] = svidlist
+            nmea = gsa
+        elif msg.sentence_type == "GSV":
+            gsv = dict()
+            gsv["in_view"] = msg.num_sv_in_view
+            svlist = list()
+            for i in range(1, 5):
+                sv = dict()
+                sv["no"] = eval("msg.sv_prn_num_"+str(i))
+                sv["el"] = eval("msg.elevation_deg_"+str(i))
+                sv["az"] = eval("msg.azimuth_"+str(i))
+                sv["sn"] = eval("msg.snr_"+str(i))
+                svlist.append(sv)
+            gsv["sv"] = svlist
+            nmea = gsv
+
+        return nmea
 
     def pack(self, files):
         u""" NMEAセンテンスをRMC毎にまとめる
@@ -90,47 +146,6 @@ class NMEAParser(object):
         """
 
         return (self._check_trip(packed))
-
-    def parse_packdata2(self, packedlist, onlygsa=False):
-        parsed = list()
-        for pack in packedlist:
-            for sentence in pack:
-                if onlygsa:
-                    if "GSA" in sentence:
-                        parsed.append(self.parse_nmea(pack))
-                else:
-                    parsed.append(self.parse_nmea(pack))
-
-        # self._debugprint(parsed)
-        return parsed
-
-    def _debugprint(self, parsed):
-        for k, v in parsed[-1].items():
-            print(k, v)
-
-        # for p in parsed:
-        #     for k, v in p.items():
-        #         print(k, v)
-        #     break
-
-    def parse_nmea(self, pack):
-        parsedict = dict()
-        gsv = 1
-        mygsv = list()
-        for sentence in pack:
-            # print(sentence)
-            try:
-                nmea = pynmea2.parse(sentence)
-            except:
-                return
-            if nmea.sentence_type == "GSV":
-                parsedict[nmea.sentence_type+str(gsv)] = nmea
-                gsv += 1
-            else:
-                parsedict[nmea.sentence_type] = nmea
-
-        return parsedict
-
 
     def _check_trip(self, pack):
         gsv = list()

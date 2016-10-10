@@ -6,7 +6,7 @@ from PyQt4 import QtCore
 from PyQt4 import QtGui
 import nmea_parse  # my module
 import nmea_graph  # my module
-import pynmea2
+import nmea_graph2  # my module
 import logging
 import logging.config
 
@@ -43,6 +43,7 @@ class MyGui(QtGui.QMainWindow):
 
         self._text = QtGui.QTextEdit()
         self._table = QtGui.QTableWidget()
+        self._label = ["time", "num(use/all)"]
         self._tableBtn = list()
         self._create()
 
@@ -87,10 +88,9 @@ class MyGui(QtGui.QMainWindow):
 
     def _create_table_area(self):
         self._table.setRowCount(0)
-        self._table.setColumnCount(4)
         self._table.setColumnWidth(3, 250)
-        self._table.setHorizontalHeaderLabels(
-                ["st_num", "usednum", "SN", "time-date"])
+        self._table.setColumnCount(len(self._label))
+        self._table.setHorizontalHeaderLabels(self._label)
         self._table.verticalHeader().setVisible(False)
         self.setCentralWidget(self._table)
 
@@ -98,69 +98,86 @@ class MyGui(QtGui.QMainWindow):
         path = QtGui.QFileDialog.getExistingDirectory(self, 'Open Dir', '.')
         self._text.clear()
         nmea = nmea_parse.NMEAParser()
-        trip = dict()
         trip2 = dict()
+        trip = dict()
         print(path)
         for tid, files in nmea.concat_trip(path).items():
             packdata = nmea.pack(files)
-            trip[tid] = nmea.parse_packdata(packdata)
-            trip2[tid] = nmea.parse_packdata2(packdata, onlygsa=True)
-            # trip[tid] = packdata
+            trip2[tid] = nmea.parse_packdata(packdata)
+            for f in files:
+                parsed = nmea.parse(f)
+                trip[tid] = parsed if tid not in trip else trip[tid] + parsed
 
-        self._show_table(trip)
-        self._show_table3(trip2)
+        self._show_table2(trip)
+        # self._show_table(trip2)
 
-    def _show_table3(self, trip):
-        for tid, packlist in trip.items():
-            # print(parsed)
-            used = list()
-            for k, v in packlist[-1].items():
-                if "GSA" in k:
-                    p = pynmea2.parse("{}".format(v))
-                    print(p.sv_id01)
-                    print(p.sv_id02)
-                    print(p.sv_id03)
-                    print(p.sv_id04)
-                    print(p.sv_id05)
-                    print(p.sv_id06)
-                    print(p.sv_id07)
-                    print(p.sv_id08)
-                    print(p.sv_id09)
-                    print(p.sv_id10)
-                    print(p.sv_id11)
-                    print(p.sv_id12)
-                elif "GSV" in k:
-                    # print("\"{}\"".format(v))
-                    p = pynmea2.parse("{}".format(v))
-                    print("No.", p.sv_prn_num_1, "\tel.", p.elevation_deg_1, "\taz",p.azimuth_1, "\tcn",p.snr_1)
-                    print("No.", p.sv_prn_num_2, "\tel.", p.elevation_deg_2, "\taz",p.azimuth_2, "\tcn",p.snr_2)
-                    print("No.", p.sv_prn_num_3, "\tel.", p.elevation_deg_3, "\taz",p.azimuth_3, "\tcn",p.snr_3)
-                    print("No.", p.sv_prn_num_4, "\tel.", p.elevation_deg_4, "\taz",p.azimuth_4, "\tcn",p.snr_4)
-
-
+    def _str_datetime(self, rmc):
+        return ("{}:{}".format(rmc.datestamp, rmc.timestamp))
 
     def _show_table2(self, trip):
-        for tid, packlist in trip.items():
-            d2 = 0
-            lost = 0
-            gga = 0
-            for pack in packlist:
-                # print(pack)
-                for p in pack:
-                    if "GGA" in p:
-                        msg = pynmea2.parse(p)
-                        gga += 1
-                        if int(msg.num_sats ) < 4:
-                            # print(msg.num_sats, p)
-                            d2 += 1
+        self._table.clear()
+        self._table.setRowCount(0)
+        row = 0
 
-            num = len(packlist)/2
-            fix = gga/2
-            d2 /= 2
-            lost = num - fix
-            per = lambda x, y: x*100/y
-            print("==== {:.2f}min 3d[{}]:{:.2f}% 2d[{}]:{:.2f}% lost[{}]:{:.2f}% ===="
-                    .format(num/60, fix, per(fix, num)-per(d2, num), d2, per(d2, num), lost, per(lost, num)))
+        for i, (tid, gps) in enumerate(trip.items()):
+            print("==========================================")
+            self._table.insertRow(row)
+
+            chkbox = QtGui.QTableWidgetItem()
+            chkbox.setFlags(
+                    QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+            chkbox.setCheckState(QtCore.Qt.Unchecked)
+            self._table.setItem(row, 0, chkbox)
+            self._table.itemClicked.connect(self._item_clicked)
+
+            self._table.setItem(row, 1, QtGui.QTableWidgetItem())
+            btnstr = "{}({}/{}): {} - {}".format(
+                    tid, i+1, len(trip),
+                    self._str_datetime(gps[0]["RMC"]),
+                    self._str_datetime(gps[-1]["RMC"]))
+            btn = QtGui.QPushButton(btnstr)
+            self._table.setCellWidget(row, 1, btn)
+            self._table.setSpan(row, 1, 1, 2)
+
+            graph = nmea_graph2.NMEAGraph2(tid, gps)
+            btn.clicked.connect(graph.draw)
+            self._table.setSpan(row, 1, 1, self._table.columnCount()-1)
+            self._tableBtn.append([btn, graph])
+
+            row += 1
+            svlist = list()
+
+            for j in range(len(gps)):
+                if j > 0 \
+                   and gps[j]["RMC"].timestamp == gps[j-1]["RMC"].timestamp \
+                   and gps[j]["RMC"].datestamp == gps[j-1]["RMC"].datestamp:
+                    continue
+
+                self._table.insertRow(row)
+                self._table.setItem(row, 0,
+                        QtGui.QTableWidgetItem(self._str_datetime(gps[j]["RMC"])))
+                self._table.setItem(row, 1, QtGui.QTableWidgetItem(str(len(gps[j]["GSV"]["sv"]))))
+
+                for sv in gps[j]["GSV"]["sv"]:
+                    if not sv["no"].isdigit():
+                        continue
+
+                    if sv["no"] not in svlist:
+                        svlist.append(sv["no"])
+                        self._table.insertColumn(self._table.columnCount())
+
+                    self._table.setItem(row, svlist.index(sv["no"])+len(self._label),
+                                        QtGui.QTableWidgetItem(sv["sn"]))
+
+                    if "GSA" in gps[j]:
+                        for used in gps[j]["GSA"]["sv"]:
+                            item = self._table.item(row, svlist.index(used)+len(self._label))
+                            if item:
+                                item.setBackgroundColor(QtGui.QColor("green"))
+
+                    self._table.hideRow(row)
+                row += 1
+            self._table.setHorizontalHeaderLabels(self._label+svlist)
 
     def _show_table(self, trip):
         self._table.clear()
@@ -175,7 +192,8 @@ class MyGui(QtGui.QMainWindow):
             print("==========================================")
             self._table.insertRow(row)
             chkbox = QtGui.QTableWidgetItem()
-            chkbox.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+            chkbox.setFlags(
+                    QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
             chkbox.setCheckState(QtCore.Qt.Unchecked)
             self._table.setItem(row, 0, chkbox)
             self._table.itemClicked.connect(self._item_clicked)
@@ -196,12 +214,12 @@ class MyGui(QtGui.QMainWindow):
 
             for sn in fixed["sn"]:
                 self._table.insertRow(row)
-                self._table.setItem(row, 0, QtGui.QTableWidgetItem("{0[num]:02d}"
-                                                             .format(sn)))
-                self._table.setItem(row, 1, QtGui.QTableWidgetItem("{0[used]:02d}"
-                                                             .format(sn)))
-                self._table.setItem(row, 2, QtGui.QTableWidgetItem("{0[sn]:02.0f}"
-                                                             .format(sn)))
+                self._table.setItem(row, 0, QtGui.QTableWidgetItem(
+                                                   "{0[num]:02d}".format(sn)))
+                self._table.setItem(row, 1, QtGui.QTableWidgetItem(
+                                                   "{0[used]:02d}".format(sn)))
+                self._table.setItem(row, 2, QtGui.QTableWidgetItem(
+                                                   "{0[sn]:02.0f}".format(sn)))
                 self._table.setItem(row, 3, QtGui.QTableWidgetItem(sn["time"]))
                 self._table.hideRow(row)
                 row += 1
@@ -215,7 +233,7 @@ class MyGui(QtGui.QMainWindow):
                 self._table.showRow(row)
             else:
                 self._table.hideRow(row)
-            row+=1
+            row += 1
 
     def _get_readme(self):
         return \
