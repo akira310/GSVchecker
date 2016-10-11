@@ -45,6 +45,30 @@ class NMEAParser(object):
         return dict_trip
 
     def parse(self, file):
+        u""" 各ファイルをtrip idごとにまとめる
+
+        Args:
+            path: sd root path
+
+        Returns:
+            parsed: 各秒ごとにセンテンスparse結果をまとめたdictのlist
+                    * "RMC": pynmea2のparse結果そのまま
+                    * "GSA": parse結果のdict
+                        * "mode"   : mode (A/M)
+                        * "fixtype": fix type (1:no,2:2D,3:3D)
+                        * "pdop"   : pdop
+                        * "hdop"   : hdop
+                        * "vdop"   : vdop
+                        * "sv"     : 使用中衛星番号のlist
+                    * "GSV": parse結果のdict
+                        * "num_sv_in_view": 取得衛星数
+                        * "sv"            : 各衛星情報dictのlist
+                            * "no": 衛星番号
+                            * "el": 仰角
+                            * "az": 方位角
+                            * "sn": 受信強度
+        """
+
         parsed = list()
 
         with open(file, "r") as f:
@@ -99,135 +123,6 @@ class NMEAParser(object):
             nmea = gsv
 
         return nmea
-
-    def pack(self, files):
-        u""" NMEAセンテンスをRMC毎にまとめる
-
-        Args:
-            files: nmea files
-
-        Returns:
-            packed: RMC毎にまとめたセンテンスlist
-        """
-
-        packed = list()
-        packing = list()
-        r = re.compile("^\$GPRMC")
-
-        for d in self._get_gpslines(files):
-            if r.search(d) and len(packing) > 0:
-                packed.append(packing[:])
-                packing.clear()
-            packing.append(d)
-
-        return (packed[1::2])
-
-    def parse_packdata(self, packed):
-        u""" tripIDごとのTTFF,SN等を調べる
-
-        Args:
-            packed: self.pack()で得れるlist
-
-        Returns:
-            trip: tripIDごとのチェック結果dict
-                 * key1: tripID, value(list): 対応tripIDのチェック結果dict
-                    * key1: "fixed"
-                        * key1: "ttff"
-                        * key2: "ttffnmea"
-                        * key3: "sn", value(list): SNリスト
-                            * key1:"num"    受信衛星数
-                            * key2:"time"   日時
-                            * key3:"used"   使用衛星数
-                            * key4:"sn"     S/N
-                    * key2: "gsv"
-                            * key1:"num"    受信衛星数
-                            * key2:"sn"     S/N
-                            * key3:"fix"    fix or not
-        """
-
-        return (self._check_trip(packed))
-
-    def _check_trip(self, pack):
-        gsv = list()
-        fixed = {"ttff": "", "ttffnmea": "", "sn": []}
-
-        for cnt, p in enumerate(pack):
-            used = list()
-            usedsn = list()
-            gsvsn = list()
-            fix_dict = dict((x, list()) for x in ["time", "num", "used", "sn"])
-            gsv_dict = dict((x, list()) for x in ["num", "sn", "fix"])
-
-            for s in p:
-                nmea = s.replace("*", ",").split(",")
-                num = 0
-
-                if nmea[0] == "$GPRMC":
-                    used.clear()
-                    time = ""
-                    gsv_dict["fix"] = 0
-                    if nmea[1] and nmea[9]:
-                        for i in range(0, 4, 2):
-                            time += nmea[1][i:i+2] + ':'
-                        time += nmea[1][4:6] + "(+UTC0) - "
-                        for i in range(0, 4, 2):
-                            time += nmea[9][i:i+2] + '/'
-                        time += nmea[9][4:6]
-                        time = ''.join(time)
-
-                    if nmea[2] == 'A' and nmea[3]:
-                        gsv_dict["fix"] = 1
-                        fix_dict["time"] = time
-
-                        if not fixed["ttff"]:
-                            fixed["ttff"] = str(int(cnt/2))
-                            fixed["ttffnmea"] = fix_dict["time"]
-
-                elif nmea[0] == "$GPGSA" and fixed["ttff"]:
-                    used = nmea[3:3+12] if nmea[2] != 1 else []
-                    while "" in used:
-                        del used[used.index("")]
-
-                elif nmea[0] == "$GPGSV":
-                    num = fix_dict["num"] = int(nmea[3])
-                    try:
-                        for i in range(4, len(nmea), 4):
-                            usedsn.append(nmea[i+3]) if nmea[i] in used else ""
-                            gsvsn.append(nmea[i+3]) if nmea[i] else ""
-                    except Exception:
-                        pass
-
-            if num > 0:
-                gsv_dict["num"] = num
-                gsv_dict["sn"] = self._average_sn(gsvsn)
-                gsv.append(gsv_dict)
-
-            if len(used):
-                fix_dict["used"] = len(used)
-                fix_dict["sn"] = self._average_sn(usedsn)
-                fixed["sn"].append(fix_dict)
-
-        return {"fixed": fixed, "gsv": gsv}
-
-    def _average_sn(self, baselist):
-        avrg = 0
-        snlist = [x for x in baselist if x]
-        if len(snlist):
-            try:
-                avrg = sum(list(map(int, snlist))) // len(snlist)
-            except Exception as e:
-                self._log.warn(e)
-
-        return avrg
-
-    def _get_gpslines(self, files):
-        lines = list()
-        r = re.compile("^\$GP")
-        for file in files:
-            with open(file, "r") as f:
-                for l in f:
-                    lines.append(l) if r.search(l) else ""
-        return lines
 
 
 if __name__ == '__main__':

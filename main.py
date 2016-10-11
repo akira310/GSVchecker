@@ -6,7 +6,6 @@ from PyQt4 import QtCore
 from PyQt4 import QtGui
 import nmea_parse  # my module
 import nmea_graph  # my module
-import nmea_graph2  # my module
 import logging
 import logging.config
 
@@ -98,23 +97,19 @@ class MyGui(QtGui.QMainWindow):
         path = QtGui.QFileDialog.getExistingDirectory(self, 'Open Dir', '.')
         self._text.clear()
         nmea = nmea_parse.NMEAParser()
-        trip2 = dict()
         trip = dict()
         print(path)
         for tid, files in nmea.concat_trip(path).items():
-            packdata = nmea.pack(files)
-            trip2[tid] = nmea.parse_packdata(packdata)
             for f in files:
                 parsed = nmea.parse(f)
                 trip[tid] = parsed if tid not in trip else trip[tid] + parsed
 
-        self._show_table2(trip)
-        # self._show_table(trip2)
+        self._show_table(trip)
 
     def _str_datetime(self, rmc):
         return ("{}:{}".format(rmc.datestamp, rmc.timestamp))
 
-    def _show_table2(self, trip):
+    def _show_table(self, trip):
         self._table.clear()
         self._table.setRowCount(0)
         row = 0
@@ -146,6 +141,7 @@ class MyGui(QtGui.QMainWindow):
 
             row += 1
             svlist = list()
+            sumlist = list()
 
             for j in range(len(gps)):
                 if j > 0 \
@@ -164,67 +160,22 @@ class MyGui(QtGui.QMainWindow):
 
                     if sv["no"] not in svlist:
                         svlist.append(sv["no"])
+                        sumlist.append(0)
                         self._table.insertColumn(self._table.columnCount())
 
+                    sumlist[svlist.index(sv["no"])] += int(sv["sn"]) if sv["sn"] else 0
                     self._table.setItem(row, svlist.index(sv["no"])+len(self._label),
                                         QtGui.QTableWidgetItem(sv["sn"]))
-
-                    if "GSA" in gps[j]:
-                        for used in gps[j]["GSA"]["sv"]:
-                            item = self._table.item(row, svlist.index(used)+len(self._label))
-                            if item:
-                                item.setBackgroundColor(QtGui.QColor("green"))
-
                     self._table.hideRow(row)
+
+                if "GSA" in gps[j]:
+                    for used in gps[j]["GSA"]["sv"]:
+                        item = self._table.item(row, svlist.index(used)+len(self._label))
+                        if item:
+                            item.setBackgroundColor(QtGui.QColor("green"))
+
                 row += 1
             self._table.setHorizontalHeaderLabels(self._label+svlist)
-
-    def _show_table(self, trip):
-        self._table.clear()
-        self._table.setRowCount(0)
-        self._table.setHorizontalHeaderLabels(
-                ["st_num", "usednum", "S/N", "time-date"])
-        # self._table.setSortingEnabled(True)
-        row = 0
-
-        for i, (tid, v) in enumerate(trip.items()):
-            fixed = v["fixed"]
-            print("==========================================")
-            self._table.insertRow(row)
-            chkbox = QtGui.QTableWidgetItem()
-            chkbox.setFlags(
-                    QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
-            chkbox.setCheckState(QtCore.Qt.Unchecked)
-            self._table.setItem(row, 0, chkbox)
-            self._table.itemClicked.connect(self._item_clicked)
-
-            self._table.setItem(row, 1, QtGui.QTableWidgetItem())
-            btnstr = "tid({i}/{n}): {id}  TTFF: {ttff}(s)  {t}".format(
-                      i=i+1, n=len(trip), id=tid,
-                      ttff=fixed["ttff"], t=fixed["ttffnmea"])
-            btn = QtGui.QPushButton(btnstr)
-            self._table.setCellWidget(row, 1, btn)
-            graph = nmea_graph.NMEAGraph(tid, fixed, v["gsv"])
-            btn.clicked.connect(graph.draw)
-            self._table.setSpan(row, 1, 1, self._table.columnCount()-1)
-            self._tableBtn.append([btn, graph])
-            row += 1
-            print(btnstr)
-            print("------------------------------------------")
-
-            for sn in fixed["sn"]:
-                self._table.insertRow(row)
-                self._table.setItem(row, 0, QtGui.QTableWidgetItem(
-                                                   "{0[num]:02d}".format(sn)))
-                self._table.setItem(row, 1, QtGui.QTableWidgetItem(
-                                                   "{0[used]:02d}".format(sn)))
-                self._table.setItem(row, 2, QtGui.QTableWidgetItem(
-                                                   "{0[sn]:02.0f}".format(sn)))
-                self._table.setItem(row, 3, QtGui.QTableWidgetItem(sn["time"]))
-                self._table.hideRow(row)
-                row += 1
-                print("SN[{0[used]:02d}]: {0[sn]:02.0f}\t{0[time]}"
-                      .format(sn))
 
     def _item_clicked(self, item):
         row = item.row() + 1
