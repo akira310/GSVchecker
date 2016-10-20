@@ -45,7 +45,7 @@ class NMEAParser(object):
         return dict_trip
 
     def parse(self, file):
-        u""" 各ファイルをtrip idごとにまとめる
+        u""" NMEAセンテンスをパースする
 
         Args:
             path: sd root path
@@ -73,9 +73,7 @@ class NMEAParser(object):
 
         with open(file, "r") as f:
             r = re.compile("(^\$..)(RMC|GSA|GSV)(.*)")
-            line = f.readline()
-
-            while line:
+            for line in f:
                 match = r.match(line)
                 if match:
                     toker = match.group(2)
@@ -86,7 +84,6 @@ class NMEAParser(object):
                         parsed[-1]["GSV"]["sv"] += self._parse_nmea(line)["sv"]
                     else:
                         parsed[-1][toker] = self._parse_nmea(line)
-                line = f.readline()
 
         return parsed
 

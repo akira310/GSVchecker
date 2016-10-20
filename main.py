@@ -137,8 +137,8 @@ class MyGui(QtGui.QMainWindow):
 
             graph = nmea_graph.NMEAGraph(tid, gps)
             btn.clicked.connect(graph.draw)
-            self._table.setSpan(row, 1, 1, self._table.columnCount()-1)
             self._tableBtn.append([btn, graph])
+            btnrow = row
 
             row += 1
             for j in range(len(gps)):
@@ -173,6 +173,7 @@ class MyGui(QtGui.QMainWindow):
                             item.setBackgroundColor(QtGui.QColor("green"))
 
                 row += 1
+            self._table.setSpan(btnrow, 1, 1, self._table.columnCount()-1)
             self._table.setHorizontalHeaderLabels(self._label+svlist)
 
     def _item_clicked(self, item):
