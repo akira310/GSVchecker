@@ -19,7 +19,7 @@ class NMEAGraph(object):
     def __init__(self, tid, gps):
         self._log = logging.getLogger(__name__)
         self._tid = tid
-        self._gps = gps
+        self._gps = gps[::2]
 
     def draw(self):
         u""" グラフ描画 """
@@ -28,16 +28,16 @@ class NMEAGraph(object):
         sns.set_style("white")
 
         fig = plt.figure()
-        fig.suptitle("{}: {}".format(self._tid, len(self._gps)))
+        fig.suptitle("tid[{}]: {}sec".format(self._tid, len(self._gps)))
         fig.subplots_adjust(hspace=0.3)
 
-        ax11 = fig.add_subplot(2, 1, 1)
-        ax11.set_title("title")
-        ax11.set_xlabel("time(*4sec)")
-        ax11.set_ylabel("CN")
-        ax11.set_ylim(10, 50)
+        ax21 = fig.add_subplot(2, 1, 2)
+        ax21.set_title("fixed SN")
+        ax21.set_ylabel("CN")
+        ax21.set_ylim(10, 50)
         svlist = dict()
         svlist["dummy"] = list()
+        timelist = list()
         for g in self._gps:
             if "GSA" in g:
                 for used in g["GSA"]["sv"]:
@@ -49,21 +49,24 @@ class NMEAGraph(object):
                         svlist[sv["no"]].append(int(sv["sn"] if sv["sn"] else 0))
 
                 svlist["dummy"].append(0)
+                date = g["RMC"].datestamp
+                timelist.append("{}/{} {}".format(date.month, date.day, g["RMC"].timestamp))
 
         for k, v in svlist.items():
             if k != "dummy":
-                ax11.plot(v, label=k)
+                ax21.plot(v, label=k)
+        ax21.set_xticklabels(timelist, rotation=15, fontsize="small")
 
-        ax21 = fig.add_subplot(2, 1, 2)
-        ax21.set_title("avrg")
-        ax21.set_ylim(0, 50)
+        ax11 = fig.add_subplot(2, 1, 1)
+        ax11.set_title("avrg.")
+        ax11.set_ylim(0, 50)
         svlist.pop("dummy")
         x = list()
         y = list()
         for k, v in svlist.items():
             x.append(k)
             y.append(sum(list(map(int, v)))//len(v))
-        ax21.bar(left=[x for x in range(len(x))], height=y, tick_label=x)
+        ax11.bar(left=[x for x in range(len(x))], height=y, tick_label=x)
         for (a, b) in zip(x, y):
             print("No.{}:{},".format(a, b), end=" ")
         print()
