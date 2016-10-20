@@ -33,7 +33,7 @@ class NMEAGraph(object):
 
         ax11 = fig.add_subplot(2, 1, 1)
         ax11.set_title("title")
-        ax11.set_xlabel("time(4sec)")
+        ax11.set_xlabel("time(*4sec)")
         ax11.set_ylabel("CN")
         ax11.set_ylim(10, 50)
         svlist = dict()
@@ -63,10 +63,9 @@ class NMEAGraph(object):
         for k, v in svlist.items():
             x.append(k)
             y.append(sum(list(map(int, v)))//len(v))
-        ax21.bar([x for x in range(len(x))], y)
-        ax21.set_xticklabels(x)
+        ax21.bar(left=[x for x in range(len(x))], height=y, tick_label=x)
         for (a, b) in zip(x, y):
-            print("[{}:{}] ".format(a, b), end="")
+            print("No.{}:{},".format(a, b), end=" ")
         print()
 
 
