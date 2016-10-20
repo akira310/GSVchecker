@@ -113,9 +113,10 @@ class MyGui(QtGui.QMainWindow):
         self._table.clear()
         self._table.setRowCount(0)
         row = 0
+        svlist = list()
+        sumlist = list()
 
         for i, (tid, gps) in enumerate(trip.items()):
-            print("==========================================")
             self._table.insertRow(row)
 
             chkbox = QtGui.QTableWidgetItem()
@@ -140,9 +141,6 @@ class MyGui(QtGui.QMainWindow):
             self._tableBtn.append([btn, graph])
 
             row += 1
-            svlist = list()
-            sumlist = list()
-
             for j in range(len(gps)):
                 if j > 0 \
                    and gps[j]["RMC"].timestamp == gps[j-1]["RMC"].timestamp \
@@ -155,7 +153,7 @@ class MyGui(QtGui.QMainWindow):
                 self._table.setItem(row, 1, QtGui.QTableWidgetItem(str(len(gps[j]["GSV"]["sv"]))))
 
                 for sv in gps[j]["GSV"]["sv"]:
-                    if not sv["no"].isdigit():
+                    if not sv["no"].isdigit() or not sv["sn"]:
                         continue
 
                     if sv["no"] not in svlist:
