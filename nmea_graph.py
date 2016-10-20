@@ -29,7 +29,6 @@ class NMEAGraph(object):
 
         fig = plt.figure()
         fig.suptitle("tid[{}]: {}sec".format(self._tid, len(self._gps)))
-        fig.subplots_adjust(hspace=0.3)
 
         ax21 = fig.add_subplot(2, 1, 2)
         ax21.set_title("fixed SN")
@@ -58,7 +57,6 @@ class NMEAGraph(object):
         ax21.set_xticklabels(timelist, rotation=15, fontsize="small")
 
         ax11 = fig.add_subplot(2, 1, 1)
-        ax11.set_title("avrg.")
         ax11.set_ylim(0, 50)
         svlist.pop("dummy")
         x = list()
@@ -66,10 +64,12 @@ class NMEAGraph(object):
         for k, v in svlist.items():
             x.append(k)
             y.append(sum(list(map(int, v)))//len(v))
-        ax11.bar(left=[x for x in range(len(x))], height=y, tick_label=x)
-        for (a, b) in zip(x, y):
-            print("No.{}:{},".format(a, b), end=" ")
-        print()
+        rects = ax11.bar(left=[x for x in range(len(x))], height=y, tick_label=x)
+
+        ax11.set_title("avrg.:{}".format(sum(y)//len(y)))
+        for rect in rects:
+            h = rect.get_height()
+            ax11.text(rect.get_x(), h+2, int(h), ha='center', va='bottom')
 
 
         plt.show()
