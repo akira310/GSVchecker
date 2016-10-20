@@ -88,36 +88,42 @@ class NMEAParser(object):
         return parsed
 
     def _parse_nmea(self, sentence):
-        nmea = msg = pynmea2.parse(sentence)
-        if msg.sentence_type == "GSA":
-            gsa = dict()
-            gsa["mode"] = msg.mode
-            gsa["fixtype"] = msg.mode_fix_type
-            gsa["pdop"] = msg.pdop
-            gsa["hdop"] = msg.hdop
-            gsa["vdop"] = msg.vdop
-            svidlist = list()
-            for i in range(1, 13):
-                svid = eval("msg.sv_id{:02d}".format(i))
-                if svid:
-                    svidlist.append(svid)
-                else:
-                    break
-            gsa["sv"] = svidlist
-            nmea = gsa
-        elif msg.sentence_type == "GSV":
-            gsv = dict()
-            gsv["in_view"] = msg.num_sv_in_view
-            svlist = list()
-            for i in range(1, 5):
-                sv = dict()
-                sv["no"] = eval("msg.sv_prn_num_"+str(i))
-                sv["el"] = eval("msg.elevation_deg_"+str(i))
-                sv["az"] = eval("msg.azimuth_"+str(i))
-                sv["sn"] = eval("msg.snr_"+str(i))
-                svlist.append(sv)
-            gsv["sv"] = svlist
-            nmea = gsv
+        try:
+            nmea = msg = pynmea2.parse(sentence)
+
+            if msg.sentence_type == "GSA":
+                gsa = dict()
+                gsa["mode"] = msg.mode
+                gsa["fixtype"] = msg.mode_fix_type
+                gsa["pdop"] = msg.pdop
+                gsa["hdop"] = msg.hdop
+                gsa["vdop"] = msg.vdop
+                svidlist = list()
+                for i in range(1, 13):
+                    svid = eval("msg.sv_id{:02d}".format(i))
+                    if svid:
+                        svidlist.append(svid)
+                    else:
+                        break
+                gsa["sv"] = svidlist
+                nmea = gsa
+            elif msg.sentence_type == "GSV":
+                gsv = dict()
+                gsv["in_view"] = msg.num_sv_in_view
+                svlist = list()
+                for i in range(1, 5):
+                    sv = dict()
+                    sv["no"] = eval("msg.sv_prn_num_"+str(i))
+                    sv["el"] = eval("msg.elevation_deg_"+str(i))
+                    sv["az"] = eval("msg.azimuth_"+str(i))
+                    sv["sn"] = eval("msg.snr_"+str(i))
+                    svlist.append(sv)
+                gsv["sv"] = svlist
+                nmea = gsv
+        except pynmea2.nmea.ChecksumError:
+            tmp = sentence.split(",")
+            tmp[-1] = str(pynmea2.nmea.NMEASentence.checksum(sentence))
+            nmea = pynmea2.parse(",".join(tmp))
 
         return nmea
 
