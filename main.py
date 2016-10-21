@@ -137,7 +137,7 @@ class MyGui(QtGui.QMainWindow):
             self._table.setCellWidget(row, 1, btn)
             self._table.setSpan(row, 1, 1, 2)
 
-            graph = nmea_graph.NMEAGraph(tid, gps)
+            graph = nmea_graph.NMEAGraph(tid, gps[::2])
             btn.clicked.connect(graph.draw)
             self._tableBtn.append([btn, graph])
             btnrow = row

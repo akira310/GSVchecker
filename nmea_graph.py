@@ -19,26 +19,30 @@ class NMEAGraph(object):
     def __init__(self, tid, gps):
         self._log = logging.getLogger(__name__)
         self._tid = tid
-        self._gsa = self._create_gsalit(gps)
+        self._gsa = self._create_gsa(gps)
 
-    def _create_gsalit(self, gpslist):
+    def _create_gsa(self, gpslist):
         gsa = {"sv":{"dummy":[]}, "time":[]}
-        for g in gpslist:
-            if "GSA" in g:
-                for used in g["GSA"]["sv"]:
-                    if used not in gsa["sv"]:
-                        gsa["sv"][used] = gsa["sv"]["dummy"][:]
-
-                for sv in g["GSV"]["sv"]:
-                    if sv["no"] in gsa["sv"]:
-                        gsa["sv"][sv["no"]].append(int(sv["sn"] if sv["sn"] else 0))
-
-                gsa["sv"]["dummy"].append(0)
-                date = g["RMC"].datestamp
-                gsa["time"].append("{}/{} {}".format(date.month, date.day,
-                                                     g["RMC"].timestamp))
+        for gps in gpslist:
+            if "GSA" in gps:
+                self._add_sv2gsa(gps, gsa)
+                self._add_sn2gsa(gps, gsa)
+                gsa["time"].append("{}/{} {}".format(gps["RMC"].datestamp.month,
+                                                     gps["RMC"].datestamp.day,
+                                                     gps["RMC"].timestamp))
         gsa["sv"].pop("dummy")
         return gsa
+
+    def _add_sv2gsa(self, gps, gsa):
+        for used in gps["GSA"]["sv"]:
+            if used not in gsa["sv"]:
+                gsa["sv"][used] = gsa["sv"]["dummy"][:]
+
+    def _add_sn2gsa(self, gps, gsa):
+        for sv in gps["GSV"]["sv"]:
+            if sv["no"] in gsa["sv"]:
+                gsa["sv"][sv["no"]].append(int(sv["sn"] if sv["sn"] else 0))
+        gsa["sv"]["dummy"].append(0)
 
     def _create_bargraph(self, ax):
         ax.set_ylim(0, 50)
