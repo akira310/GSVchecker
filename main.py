@@ -42,7 +42,6 @@ class MyGui(QtGui.QMainWindow):
 
         self._text = QtGui.QTextEdit()
         self._table = QtGui.QTableWidget()
-        self._label = ["time", "num(use/all)"]
         self._tableBtn = list()
         self._create()
 
@@ -56,7 +55,7 @@ class MyGui(QtGui.QMainWindow):
         self._create_menu()
         self._create_log_area()
         self._create_table_area()
-        self.setGeometry(100, 100, 750, 500)
+        self.setGeometry(100, 100, 1000, 750)
         self.show()
 
     def _create_menu(self):
@@ -86,10 +85,13 @@ class MyGui(QtGui.QMainWindow):
         self._text.setText(self._get_readme())
 
     def _create_table_area(self):
+        self._label = ["time", "sv num"]
+        self._labelwidth = [170, 60]
         self._table.setRowCount(0)
-        self._table.setColumnWidth(3, 250)
         self._table.setColumnCount(len(self._label))
         self._table.setHorizontalHeaderLabels(self._label)
+        for i,w in enumerate(self._labelwidth):
+            self._table.setColumnWidth(i, w)
         self._table.verticalHeader().setVisible(False)
         self.setCentralWidget(self._table)
 
@@ -160,6 +162,7 @@ class MyGui(QtGui.QMainWindow):
                         svlist.append(sv["no"])
                         sumlist.append(0)
                         self._table.insertColumn(self._table.columnCount())
+                        self._table.setColumnWidth(self._table.columnCount()-1, 40)
 
                     sumlist[svlist.index(sv["no"])] += int(sv["sn"]) if sv["sn"] else 0
                     self._table.setItem(row, svlist.index(sv["no"])+len(self._label),
@@ -170,7 +173,7 @@ class MyGui(QtGui.QMainWindow):
                     for used in gps[j]["GSA"]["sv"]:
                         item = self._table.item(row, svlist.index(used)+len(self._label))
                         if item:
-                            item.setBackgroundColor(QtGui.QColor("green"))
+                            item.setBackgroundColor(QtGui.QColor("cyan"))
 
                 row += 1
             self._table.setSpan(btnrow, 1, 1, self._table.columnCount()-1)
