@@ -70,7 +70,7 @@ class NMEAParser(object):
         """
 
         parsed = list()
-
+        newnmea = True
         with open(file, "r") as f:
             r = re.compile("(^\$..)(RMC|GSA|GSV)(.*)")
             for line in f:
@@ -78,12 +78,18 @@ class NMEAParser(object):
                 if match:
                     toker = match.group(2)
                     if toker == "RMC":
-                        parsed.append(dict())
-                        parsed[-1][toker] = self._parse_nmea(line)
-                    elif toker == "GSV" and "GSV" in parsed[-1]:
-                        parsed[-1]["GSV"]["sv"] += self._parse_nmea(line)["sv"]
-                    else:
-                        parsed[-1][toker] = self._parse_nmea(line)
+                        rmc = self._parse_nmea(line)
+                        if len(parsed) and rmc.timestamp == parsed[-1]["RMC"].timestamp:
+                            newnmea = False
+                        else:
+                            newnmea = True
+                            parsed.append(dict())
+                            parsed[-1][toker] = rmc
+                    elif newnmea:
+                        if toker == "GSV" and "GSV" in parsed[-1]:
+                            parsed[-1]["GSV"]["sv"] += self._parse_nmea(line)["sv"]
+                        else:
+                            parsed[-1][toker] = self._parse_nmea(line)
 
         return parsed
 
