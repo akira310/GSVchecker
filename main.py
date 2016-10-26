@@ -112,7 +112,7 @@ class MyGui(QtGui.QMainWindow):
         return ("{}:{}".format(rmc.datestamp, rmc.timestamp))
 
     def _show_table(self, trip):
-        self._table.clear()
+        self._create_table_area()
         self._table.setRowCount(0)
         row = 0
         svlist = list()
@@ -129,10 +129,13 @@ class MyGui(QtGui.QMainWindow):
             self._table.itemClicked.connect(self._item_clicked)
 
             self._table.setItem(row, 1, QtGui.QTableWidgetItem())
-            btnstr = "{}({}/{}): {} - {}".format(
-                    tid, i+1, len(trip),
-                    self._str_datetime(gps[0]["RMC"]),
-                    self._str_datetime(gps[-1]["RMC"]))
+            for tmpi in range(len(gps)):
+                if gps[tmpi]["RMC"].timestamp != None:
+                    btnstr = "{}({}/{}): {} - {}".format(
+                            tid, i+1, len(trip),
+                            self._str_datetime(gps[tmpi]["RMC"]),
+                            self._str_datetime(gps[-1]["RMC"]))
+                    break
             btn = QtGui.QPushButton(btnstr)
             self._table.setCellWidget(row, 1, btn)
             self._table.setSpan(row, 1, 1, 2)
@@ -144,6 +147,9 @@ class MyGui(QtGui.QMainWindow):
 
             row += 1
             for j in range(len(gps)):
+                if gps[j]["RMC"].timestamp == None:
+                    continue
+
                 if j > 0 \
                    and gps[j]["RMC"].timestamp == gps[j-1]["RMC"].timestamp \
                    and gps[j]["RMC"].datestamp == gps[j-1]["RMC"].datestamp:
@@ -152,22 +158,23 @@ class MyGui(QtGui.QMainWindow):
                 self._table.insertRow(row)
                 self._table.setItem(row, 0,
                         QtGui.QTableWidgetItem(self._str_datetime(gps[j]["RMC"])))
-                self._table.setItem(row, 1, QtGui.QTableWidgetItem(str(len(gps[j]["GSV"]["sv"]))))
+                if "GSV" in gps[j]:
+                    self._table.setItem(row, 1, QtGui.QTableWidgetItem(str(len(gps[j]["GSV"]["sv"]))))
 
-                for sv in gps[j]["GSV"]["sv"]:
-                    if not sv["no"].isdigit() or not sv["sn"]:
-                        continue
+                    for sv in gps[j]["GSV"]["sv"]:
+                        if not sv["no"].isdigit() or not sv["sn"]:
+                            continue
 
-                    if sv["no"] not in svlist:
-                        svlist.append(sv["no"])
-                        sumlist.append(0)
-                        self._table.insertColumn(self._table.columnCount())
-                        self._table.setColumnWidth(self._table.columnCount()-1, 40)
+                        if sv["no"] not in svlist:
+                            svlist.append(sv["no"])
+                            sumlist.append(0)
+                            self._table.insertColumn(self._table.columnCount())
+                            self._table.setColumnWidth(self._table.columnCount()-1, 40)
 
-                    sumlist[svlist.index(sv["no"])] += int(sv["sn"]) if sv["sn"] else 0
-                    self._table.setItem(row, svlist.index(sv["no"])+len(self._label),
-                                        QtGui.QTableWidgetItem(sv["sn"]))
-                    self._table.hideRow(row)
+                        sumlist[svlist.index(sv["no"])] += int(sv["sn"]) if sv["sn"] else 0
+                        self._table.setItem(row, svlist.index(sv["no"])+len(self._label),
+                                            QtGui.QTableWidgetItem(sv["sn"]))
+                        self._table.hideRow(row)
 
                 if "GSA" in gps[j]:
                     for used in gps[j]["GSA"]["sv"]:
