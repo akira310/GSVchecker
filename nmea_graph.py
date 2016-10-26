@@ -31,7 +31,7 @@ class NMEAGraph(object):
                                                      gps["RMC"].datestamp.day,
                                                      gps["RMC"].timestamp))
         gsa["sv"].pop("dummy")
-        return gsa
+        return self._check_thr(gsa)
 
     def _add_sv2gsa(self, gps, gsa):
         for used in gps["GSA"]["sv"]:
@@ -41,14 +41,24 @@ class NMEAGraph(object):
     def _add_sn2gsa(self, gps, gsa):
         for sv in gps["GSV"]["sv"]:
             if sv["no"] in gsa["sv"]:
-                gsa["sv"][sv["no"]].append(int(sv["sn"] if sv["sn"] else 0))
+                gsa["sv"][sv["no"]].append(int(sv["sn"] if sv["sn"] and int(sv["el"]) > 20 else 0))
         gsa["sv"]["dummy"].append(0)
 
+    def _check_thr(self, gsa):
+        poplist = list()
+        for k, v in gsa["sv"].items():
+            if sum(list(map(int, v)))//len(v) < 15:
+                poplist.append(k)
+        for k in poplist:
+            gsa["sv"].pop(k)
+        return gsa
+
+
     def _create_bargraph(self, ax):
-        ax.set_ylim(0, 50)
+        ax.set_ylim(15, 50)
         x = list()
         y = list()
-        for k, v in self._gsa["sv"].items():
+        for k, v in sorted(self._gsa["sv"].items(), key=lambda x: int(x[0])):
             x.append(k)
             y.append(sum(list(map(int, v)))//len(v))
         rects = ax.bar(left=[x for x in range(len(x))], height=y, tick_label=x)
@@ -61,20 +71,21 @@ class NMEAGraph(object):
     def _create_linegraph(self, ax):
         ax.set_title("fixed SN")
         ax.set_ylabel("CN")
-        ax.set_ylim(10, 50)
-        for k, v in self._gsa["sv"].items():
+        ax.set_ylim(15, 50)
+        for k, v in sorted(self._gsa["sv"].items(), key=lambda x: int(x[0])):
             ax.plot(v, label=k)
         ax.set_xticklabels(self._gsa["time"], rotation=15, fontsize="small")
+        ax.legend(bbox_to_anchor=(1, 1), loc=2, frameon=True)
 
 
     def draw(self):
         u""" グラフ描画 """
 
-        sns.set(palette='colorblind')
+        # sns.set(palette='colorblind')
         sns.set_style("white")
 
         fig = plt.figure()
-        fig.suptitle("tid[{}]: {}sec".format(self._tid, len(self._gsa["time"])))
+        fig.suptitle("tid [{}]".format(self._tid))
         self._create_bargraph(fig.add_subplot(2, 1, 1))
         self._create_linegraph(fig.add_subplot(2, 1, 2))
         plt.show()
