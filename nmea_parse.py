@@ -124,7 +124,8 @@ class NMEAParser(object):
                     sv["el"] = eval("msg.elevation_deg_"+str(i))
                     sv["az"] = eval("msg.azimuth_"+str(i))
                     sv["sn"] = eval("msg.snr_"+str(i))
-                    svlist.append(sv)
+                    if sv["no"]:
+                        svlist.append(sv)
                 gsv["sv"] = svlist
                 nmea = gsv
         except pynmea2.nmea.ChecksumError:
