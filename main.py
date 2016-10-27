@@ -128,23 +128,11 @@ class MyGui(QtGui.QMainWindow):
             self._table.itemClicked.connect(self._item_clicked)
 
             self._table.setItem(row, 1, QtGui.QTableWidgetItem())
-            for tmpi in range(len(gps)):
-                if gps[tmpi]["RMC"].timestamp != None:
-                    btnstr = "{}({}/{}): {} - {}".format(
-                            tid, i+1, len(trip),
-                            self._str_datetime(gps[tmpi]["RMC"]),
-                            self._str_datetime(gps[-1]["RMC"]))
-                    break
-            btn = QtGui.QPushButton(btnstr)
-            self._table.setCellWidget(row, 1, btn)
+            self._table.setCellWidget(row, 1, self._create_graphbtn(tid, len(trip), gps))
             self._table.setSpan(row, 1, 1, 2)
-
-            graph = nmea_graph.NMEAGraph(tid, gps)
-            btn.clicked.connect(graph.draw)
-            self._tableBtn.append([btn, graph])
             btnrow = row
-
             row += 1
+
             for j in range(len(gps)):
                 if gps[j]["RMC"].timestamp == None:
                     continue
@@ -182,6 +170,22 @@ class MyGui(QtGui.QMainWindow):
                 row += 1
             self._table.setSpan(btnrow, 1, 1, self._table.columnCount()-1)
             self._table.setHorizontalHeaderLabels(self._label+svlist)
+
+    def _create_graphbtn(self, tid, tripnum, gps):
+        text = "???"
+        for i in range(len(gps)):
+            if gps[i]["RMC"].timestamp != None:
+                text = "{}({}/{}): {} - {}".format(
+                        tid, i+1, tripnum,
+                        self._str_datetime(gps[i]["RMC"]),
+                        self._str_datetime(gps[-1]["RMC"]))
+                break
+        btn = QtGui.QPushButton(text)
+        graph = nmea_graph.NMEAGraph(tid, gps)
+        btn.clicked.connect(graph.draw)
+        self._tableBtn.append([btn, graph])
+        return btn
+
 
     def _item_clicked(self, item):
         row = item.row() + 1
