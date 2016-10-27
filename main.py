@@ -116,7 +116,6 @@ class MyGui(QtGui.QMainWindow):
         self._table.setRowCount(0)
         row = 0
         svlist = list()
-        sumlist = list()
 
         for i, (tid, gps) in enumerate(trip.items()):
             self._table.insertRow(row)
@@ -162,19 +161,16 @@ class MyGui(QtGui.QMainWindow):
                     self._table.setItem(row, 1, QtGui.QTableWidgetItem(str(len(gps[j]["GSV"]["sv"]))))
 
                     for sv in gps[j]["GSV"]["sv"]:
-                        if not sv["no"].isdigit() or not sv["sn"]:
+                        if not sv["no"]:
                             continue
 
                         if sv["no"] not in svlist:
                             svlist.append(sv["no"])
-                            sumlist.append(0)
                             self._table.insertColumn(self._table.columnCount())
                             self._table.setColumnWidth(self._table.columnCount()-1, 40)
 
-                        sumlist[svlist.index(sv["no"])] += int(sv["sn"]) if sv["sn"] else 0
                         self._table.setItem(row, svlist.index(sv["no"])+len(self._label),
-                                            QtGui.QTableWidgetItem(sv["sn"]))
-                        self._table.hideRow(row)
+                                            QtGui.QTableWidgetItem("{}".format(sv["sn"] if sv["sn"] else "-")))
 
                 if "GSA" in gps[j]:
                     for used in gps[j]["GSA"]["sv"]:
@@ -182,6 +178,7 @@ class MyGui(QtGui.QMainWindow):
                         if item:
                             item.setBackgroundColor(QtGui.QColor("cyan"))
 
+                self._table.hideRow(row)
                 row += 1
             self._table.setSpan(btnrow, 1, 1, self._table.columnCount()-1)
             self._table.setHorizontalHeaderLabels(self._label+svlist)
