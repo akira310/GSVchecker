@@ -29,7 +29,8 @@ class NMEAParser(object):
                  * key1: tripID, value(list): 対応tripIDのファイルフルパス
         """
 
-        path = os.path.join(path, "SYSTEM", "NMEA", "NORMAL")
+        if "SYSTEM" in os.listdir(path):
+            path = os.path.join(path, "SYSTEM", "NMEA", "NORMAL")
         files = os.listdir(path)
         files.sort()
         dict_trip = {}
