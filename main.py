@@ -43,6 +43,7 @@ class MyGui(QtGui.QMainWindow):
         self._text = QtGui.QTextEdit()
         self._table = QtGui.QTableWidget()
         self._tableBtn = list()
+        self._thr = 15
         self._create()
 
     def closeEvent(self, event):
@@ -59,17 +60,53 @@ class MyGui(QtGui.QMainWindow):
         self.show()
 
     def _create_menu(self):
-        openFile = QtGui.QAction(
+        menubar = self.menuBar()
+        fileMenu = menubar.addMenu('&File')
+        fileMenu.addAction(self._create_menu_fileopen())
+
+        EditMenu = menubar.addMenu('&Edit')
+        EditMenu.addAction(self._create_menu_setthresh())
+
+    def _create_menu_fileopen(self):
+        menu = QtGui.QAction(
                     QtGui.QApplication.style()
                     .standardIcon(QtGui.QStyle.SP_FileDialogStart),
                     'Open', self)
-        openFile.setShortcut('Ctrl+O')
-        openFile.setStatusTip('Open Dir')
-        openFile.triggered.connect(self._open)
+        menu.setShortcut('Ctrl+O')
+        menu.setStatusTip('Open Dir')
+        menu.triggered.connect(self._open)
 
-        menubar = self.menuBar()
-        fileMenu = menubar.addMenu('&File')
-        fileMenu.addAction(openFile)
+        return menu
+
+    def _open(self):
+        path = QtGui.QFileDialog.getExistingDirectory(self, 'Open Dir', '.')
+        self._text.clear()
+        nmea = nmea_parse.NMEAParser()
+        trip = dict()
+        print(path)
+        for tid, files in nmea.concat_trip(path).items():
+            for f in files:
+                parsed = nmea.parse(f)
+                trip[tid] = parsed if tid not in trip else trip[tid] + parsed
+
+        self._show_table(trip)
+
+    def _create_menu_setthresh(self):
+        menu = QtGui.QAction(
+                    QtGui.QApplication.style()
+                    .standardIcon(QtGui.QStyle.SP_DialogApplyButton),
+                    'Thresh', self)
+        # menu.setShortcut('Ctrl+T')
+        menu.setStatusTip('Set Thresh')
+        menu.triggered.connect(self._setthresh)
+
+        return menu
+
+    def _setthresh(self):
+        thr, ok = QtGui.QInputDialog.getInt(self, "Input", "Set SN thresh (dB)",
+                                            value=self._thr, min=0, max=100, step=1)
+        if ok:
+            self._thr = thr
 
     def _create_log_area(self):
         self.top_dock = QtGui.QDockWidget("log", self)
@@ -94,19 +131,6 @@ class MyGui(QtGui.QMainWindow):
             self._table.setColumnWidth(i, w)
         self._table.verticalHeader().setVisible(False)
         self.setCentralWidget(self._table)
-
-    def _open(self):
-        path = QtGui.QFileDialog.getExistingDirectory(self, 'Open Dir', '.')
-        self._text.clear()
-        nmea = nmea_parse.NMEAParser()
-        trip = dict()
-        print(path)
-        for tid, files in nmea.concat_trip(path).items():
-            for f in files:
-                parsed = nmea.parse(f)
-                trip[tid] = parsed if tid not in trip else trip[tid] + parsed
-
-        self._show_table(trip)
 
     def _str_datetime(self, rmc):
         return ("{}:{}".format(rmc.datestamp, rmc.timestamp))
@@ -182,7 +206,7 @@ class MyGui(QtGui.QMainWindow):
                 break
         btn = QtGui.QPushButton(text)
         graph = nmea_graph.NMEAGraph(tid, gps)
-        btn.clicked.connect(graph.draw)
+        btn.clicked.connect(lambda: graph.draw(self._thr))
         self._tableBtn.append([btn, graph])
         return btn
 

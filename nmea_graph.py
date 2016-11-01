@@ -7,6 +7,7 @@ import matplotlib.ticker as tckr
 import seaborn as sns
 from math import *
 import re
+import copy
 import logging
 
 
@@ -19,7 +20,7 @@ class NMEAGraph(object):
     def __init__(self, tid, gps):
         self._log = logging.getLogger(__name__)
         self._tid = tid
-        self._gsa = self._create_gsa(gps)
+        self._gsaorg = self._create_gsa(gps)
 
     def _create_gsa(self, gpslist):
         gsa = {"sv":{"dummy":[]}, "time":[]}
@@ -31,7 +32,7 @@ class NMEAGraph(object):
                                                      gps["RMC"].datestamp.day,
                                                      gps["RMC"].timestamp))
         gsa["sv"].pop("dummy")
-        return self._check_thr(gsa)
+        return gsa
 
     def _add_sv2gsa(self, gps, gsa):
         for used in gps["GSA"]["sv"]:
@@ -44,41 +45,46 @@ class NMEAGraph(object):
                 gsa["sv"][sv["no"]].append(int(sv["sn"] if sv["sn"] and int(sv["el"]) > 20 else 0))
         gsa["sv"]["dummy"].append(0)
 
-    def _check_thr(self, gsa):
+    def _check_thr(self, gsa, thr):
         poplist = list()
         for k, v in gsa["sv"].items():
-            if sum(list(map(int, v)))//len(v) < 15:
+            if sum(list(map(int, v)))//len(v) < thr:
                 poplist.append(k)
         for k in poplist:
             gsa["sv"].pop(k)
         return gsa
 
 
-    def _create_bargraph(self, ax):
-        ax.set_ylim(15, 50)
+    def _create_bargraph(self, gsa, thr, ax):
+        ax.set_ylim(thr, 50)
         x = list()
         y = list()
-        for k, v in sorted(self._gsa["sv"].items(), key=lambda x: int(x[0])):
+        if len(gsa) < 1:
+            return
+        for k, v in sorted(gsa["sv"].items(), key=lambda x: int(x[0])):
             x.append(k)
             y.append(sum(list(map(int, v)))//len(v))
         rects = ax.bar(left=[x for x in range(len(x))], height=y, tick_label=x)
 
-        ax.set_title("avrg.:{}".format(sum(y)//len(y)))
+        avrg = sum(y)//len(y) if len(y) > 0 else 0
+        ax.set_title("avrg.:{}".format(avrg))
         for rect in rects:
             h = rect.get_height()
             ax.text(rect.get_x(), h+2, int(h), ha='center', va='bottom')
 
-    def _create_linegraph(self, ax):
+    def _create_linegraph(self, gsa, thr, ax):
         ax.set_title("fixed SN")
         ax.set_ylabel("CN")
-        ax.set_ylim(15, 50)
-        for k, v in sorted(self._gsa["sv"].items(), key=lambda x: int(x[0])):
+        ax.set_ylim(thr, 50)
+        if len(gsa) < 1:
+            return
+        for k, v in sorted(gsa["sv"].items(), key=lambda x: int(x[0])):
             ax.plot(v, label=k)
-        ax.set_xticklabels(self._gsa["time"], rotation=15, fontsize="small")
+        ax.set_xticklabels(gsa["time"], rotation=15, fontsize="small")
         ax.legend(bbox_to_anchor=(1, 1), loc=2, frameon=True)
 
 
-    def draw(self):
+    def draw(self, thr):
         u""" グラフ描画 """
 
         # sns.set(palette='colorblind')
@@ -86,8 +92,9 @@ class NMEAGraph(object):
 
         fig = plt.figure()
         fig.suptitle("tid [{}]".format(self._tid))
-        self._create_bargraph(fig.add_subplot(2, 1, 1))
-        self._create_linegraph(fig.add_subplot(2, 1, 2))
+        gsa = self._check_thr(copy.deepcopy(self._gsaorg), thr)
+        self._create_bargraph(gsa, thr, fig.add_subplot(2, 1, 1))
+        self._create_linegraph(gsa, thr, fig.add_subplot(2, 1, 2))
         plt.show()
 
 
