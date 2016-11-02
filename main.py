@@ -152,7 +152,7 @@ class MyGui(QtGui.QMainWindow):
             self._table.itemClicked.connect(self._item_clicked)
 
             self._table.setItem(row, 1, QtGui.QTableWidgetItem())
-            self._table.setCellWidget(row, 1, self._create_graphbtn(tid, len(trip), gps))
+            self._table.setCellWidget(row, 1, self._create_graphbtn(tid, (i, len(trip)), gps))
             self._table.setSpan(row, 1, 1, 2)
             btnrow = row
             row += 1
@@ -200,7 +200,7 @@ class MyGui(QtGui.QMainWindow):
         for i in range(len(gps)):
             if gps[i]["RMC"].timestamp != None:
                 text = "{}({}/{}): {} - {}".format(
-                        tid, i+1, tripnum,
+                        tid, tripnum[0]+1, tripnum[1],
                         self._str_datetime(gps[i]["RMC"]),
                         self._str_datetime(gps[-1]["RMC"]))
                 break
