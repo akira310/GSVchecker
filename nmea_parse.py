@@ -34,11 +34,18 @@ class NMEAParser(object):
         files = os.listdir(path)
         files.sort()
         dict_trip = {}
+        i = 0
 
         for file in files:
             file = os.path.join(path, file)
             with open(file, "r") as f:
-                key = f.readline().split(",")[-1].rstrip()
+                line = f.readline().split(",")
+                if "GTRIP" in line[0]:
+                    key = line[-1].rstrip()
+                else:
+                    key = "dummy{}".format(i)
+                    i+=1
+
                 if key not in dict_trip:
                     dict_trip[key] = list()
                 dict_trip[key].append(file)
