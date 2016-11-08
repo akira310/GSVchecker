@@ -42,7 +42,7 @@ class NMEAGraph(object):
     def _add_sn2gsa(self, gps, gsa):
         for sv in gps["GSV"]["sv"]:
             if sv["no"] in gsa["sv"]:
-                gsa["sv"][sv["no"]].append(int(sv["sn"] if sv["sn"] and int(sv["el"]) > 20 else 0))
+                gsa["sv"][sv["no"]].append(int(sv["sn"] if sv["sn"] and sv["el"] else 0))
         gsa["sv"]["dummy"].append(0)
 
     def _check_thr(self, gsa, thr):
