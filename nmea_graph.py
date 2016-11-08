@@ -5,6 +5,7 @@ import sys
 import matplotlib.pyplot as plt
 import matplotlib.ticker as tckr
 import seaborn as sns
+import numpy as np
 from math import *
 import re
 import copy
@@ -23,7 +24,7 @@ class NMEAGraph(object):
         self._gsaorg = self._create_gsa(gps)
 
     def _create_gsa(self, gpslist):
-        gsa = {"sv":{"dummy":{"sn":[], "el":[]}}, "time":[]}
+        gsa = {"sv":{"dummy":{"sn":[], "el":[], "az":[]}}, "time":[]}
         for gps in gpslist:
             if "GSA" in gps:
                 self._add_sv2gsa(gps, gsa)
@@ -44,15 +45,17 @@ class NMEAGraph(object):
             if sv["no"] in gsa["sv"]:
                 gsa["sv"][sv["no"]]["sn"].append(int(sv["sn"] if sv["sn"] else 0))
                 gsa["sv"][sv["no"]]["el"].append(int(sv["el"] if sv["el"] else 0))
+                if sv["az"]:
+                    gsa["sv"][sv["no"]]["az"].append(int(sv["az"]))
         gsa["sv"]["dummy"]["sn"].append(0)
         gsa["sv"]["dummy"]["el"].append(0)
 
     def _check_thr(self, gsa, thr):
         poplist = list()
         for k, v in gsa["sv"].items():
-            if sum(list(map(int, v["sn"])))//len(v["sn"]) < thr["sn"] or\
-               sum(list(map(int, v["el"])))//len(v["el"]) < thr["el"]:
-                poplist.append(k)
+            if np.average(v["sn"]) < thr["sn"] or\
+               np.average(v["el"]) < thr["el"]:
+               poplist.append(k)
         for k in poplist:
             gsa["sv"].pop(k)
         return gsa
@@ -66,14 +69,29 @@ class NMEAGraph(object):
             return
         for k, v in sorted(gsa["sv"].items(), key=lambda x: int(x[0])):
             x.append(k)
-            y.append(sum(list(map(int, v["sn"])))//len(v["sn"]))
+            y.append(np.average(v["sn"]))
         rects = ax.bar(left=[x for x in range(len(x))], height=y, tick_label=x)
 
-        avrg = sum(y)//len(y) if len(y) > 0 else 0
+        avrg = np.average(y) if len(y) > 0 else 0
         ax.set_title("avrg.:{}".format(avrg))
         for rect in rects:
             h = rect.get_height()
             ax.text(rect.get_x(), h+2, int(h), ha='center', va='bottom')
+
+    def _create_polargraph(self, gsa, thr, ax):
+        sv = list()
+        theta = list()
+        r = list()
+        for k, v in sorted(gsa["sv"].items(), key=lambda x: int(x[0])):
+            sv.append(k)
+            theta.append(np.radians(np.average(v["az"])))
+            r.append(90 - np.average(v["el"]))
+        ax.set_rlim(0, 90-thr["el"])
+        ax.set_yticklabels([])
+        ax.plot(theta, r, 'o')
+
+        for s, t, v in zip(sv, theta, r):
+            ax.text(t, v, s)
 
     def _create_linegraph(self, gsa, thr, ax):
         ax.set_title("fixed SN")
@@ -96,7 +114,8 @@ class NMEAGraph(object):
         fig = plt.figure()
         fig.suptitle("tid [{}]".format(self._tid))
         gsa = self._check_thr(copy.deepcopy(self._gsaorg), thr)
-        self._create_bargraph(gsa, thr, fig.add_subplot(2, 1, 1))
+        self._create_bargraph(gsa, thr, fig.add_subplot(2, 2, 1))
+        self._create_polargraph(gsa, thr, fig.add_subplot(2, 2, 2, polar=True))
         self._create_linegraph(gsa, thr, fig.add_subplot(2, 1, 2))
         plt.show()
 

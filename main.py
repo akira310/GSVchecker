@@ -64,9 +64,10 @@ class MyGui(QtGui.QMainWindow):
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(self._create_menu_fileopen())
 
-        EditMenu = menubar.addMenu('&Edit')
-        EditMenu.addAction(self._create_menu_setthresh_sn())
-        EditMenu.addAction(self._create_menu_setthresh_el())
+        editMenu = menubar.addMenu('&Edit')
+        threshMenu = editMenu.addMenu('Set Thresh')
+        threshMenu.addAction(self._create_menu_setthresh_sn())
+        threshMenu.addAction(self._create_menu_setthresh_el())
 
     def _create_menu_fileopen(self):
         menu = QtGui.QAction(
