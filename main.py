@@ -43,7 +43,7 @@ class MyGui(QtGui.QMainWindow):
         self._text = QtGui.QTextEdit()
         self._table = QtGui.QTableWidget()
         self._tableBtn = list()
-        self._thr = 15
+        self._thr = {"sn": 15, "el": 5}
         self._create()
 
     def closeEvent(self, event):
@@ -65,7 +65,8 @@ class MyGui(QtGui.QMainWindow):
         fileMenu.addAction(self._create_menu_fileopen())
 
         EditMenu = menubar.addMenu('&Edit')
-        EditMenu.addAction(self._create_menu_setthresh())
+        EditMenu.addAction(self._create_menu_setthresh_sn())
+        EditMenu.addAction(self._create_menu_setthresh_el())
 
     def _create_menu_fileopen(self):
         menu = QtGui.QAction(
@@ -91,22 +92,39 @@ class MyGui(QtGui.QMainWindow):
 
         self._show_table(trip)
 
-    def _create_menu_setthresh(self):
+    def _create_menu_setthresh_sn(self):
         menu = QtGui.QAction(
                     QtGui.QApplication.style()
                     .standardIcon(QtGui.QStyle.SP_DialogApplyButton),
-                    'Thresh', self)
+                    'C/N Thresh', self)
         # menu.setShortcut('Ctrl+T')
-        menu.setStatusTip('Set Thresh')
-        menu.triggered.connect(self._setthresh)
+        menu.setStatusTip('Set C/N Thresh')
+        menu.triggered.connect(self._setthresh_sn)
 
         return menu
 
-    def _setthresh(self):
+    def _create_menu_setthresh_el(self):
+        menu = QtGui.QAction(
+                    QtGui.QApplication.style()
+                    .standardIcon(QtGui.QStyle.SP_DialogApplyButton),
+                    'elevation Thresh', self)
+        # menu.setShortcut('Ctrl+T')
+        menu.setStatusTip('Set elevation Thresh')
+        menu.triggered.connect(self._setthresh_el)
+
+        return menu
+
+    def _setthresh_sn(self):
         thr, ok = QtGui.QInputDialog.getInt(self, "Input", "Set SN thresh (dB)",
-                                            value=self._thr, min=0, max=100, step=1)
+                                            value=self._thr["sn"], min=0, max=100, step=1)
         if ok:
-            self._thr = thr
+            self._thr["sn"] = thr
+
+    def _setthresh_el(self):
+        thr, ok = QtGui.QInputDialog.getInt(self, "Input", "Set elevation thresh (deg)",
+                                            value=self._thr["el"], min=0, max=90, step=1)
+        if ok:
+            self._thr["el"] = thr
 
     def _create_log_area(self):
         self.top_dock = QtGui.QDockWidget("log", self)

@@ -23,7 +23,7 @@ class NMEAGraph(object):
         self._gsaorg = self._create_gsa(gps)
 
     def _create_gsa(self, gpslist):
-        gsa = {"sv":{"dummy":[]}, "time":[]}
+        gsa = {"sv":{"dummy":{"sn":[], "el":[]}}, "time":[]}
         for gps in gpslist:
             if "GSA" in gps:
                 self._add_sv2gsa(gps, gsa)
@@ -37,18 +37,21 @@ class NMEAGraph(object):
     def _add_sv2gsa(self, gps, gsa):
         for used in gps["GSA"]["sv"]:
             if used not in gsa["sv"]:
-                gsa["sv"][used] = gsa["sv"]["dummy"][:]
+                gsa["sv"][used] = copy.deepcopy(gsa["sv"]["dummy"])
 
     def _add_sn2gsa(self, gps, gsa):
         for sv in gps["GSV"]["sv"]:
             if sv["no"] in gsa["sv"]:
-                gsa["sv"][sv["no"]].append(int(sv["sn"] if sv["sn"] and sv["el"] else 0))
-        gsa["sv"]["dummy"].append(0)
+                gsa["sv"][sv["no"]]["sn"].append(int(sv["sn"] if sv["sn"] else 0))
+                gsa["sv"][sv["no"]]["el"].append(int(sv["el"] if sv["el"] else 0))
+        gsa["sv"]["dummy"]["sn"].append(0)
+        gsa["sv"]["dummy"]["el"].append(0)
 
     def _check_thr(self, gsa, thr):
         poplist = list()
         for k, v in gsa["sv"].items():
-            if sum(list(map(int, v)))//len(v) < thr:
+            if sum(list(map(int, v["sn"])))//len(v["sn"]) < thr["sn"] or\
+               sum(list(map(int, v["el"])))//len(v["el"]) < thr["el"]:
                 poplist.append(k)
         for k in poplist:
             gsa["sv"].pop(k)
@@ -56,14 +59,14 @@ class NMEAGraph(object):
 
 
     def _create_bargraph(self, gsa, thr, ax):
-        ax.set_ylim(thr, 50)
+        ax.set_ylim(thr["sn"], 50)
         x = list()
         y = list()
         if len(gsa) < 1:
             return
         for k, v in sorted(gsa["sv"].items(), key=lambda x: int(x[0])):
             x.append(k)
-            y.append(sum(list(map(int, v)))//len(v))
+            y.append(sum(list(map(int, v["sn"])))//len(v["sn"]))
         rects = ax.bar(left=[x for x in range(len(x))], height=y, tick_label=x)
 
         avrg = sum(y)//len(y) if len(y) > 0 else 0
@@ -75,11 +78,11 @@ class NMEAGraph(object):
     def _create_linegraph(self, gsa, thr, ax):
         ax.set_title("fixed SN")
         ax.set_ylabel("CN")
-        ax.set_ylim(thr, 50)
+        ax.set_ylim(thr["sn"], 50)
         if len(gsa) < 1:
             return
         for k, v in sorted(gsa["sv"].items(), key=lambda x: int(x[0])):
-            ax.plot(v, label=k)
+            ax.plot(v["sn"], label=k)
         ax.set_xticklabels(gsa["time"], rotation=15, fontsize="small")
         ax.legend(bbox_to_anchor=(1, 1), loc=2, frameon=True)
 
