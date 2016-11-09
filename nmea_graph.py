@@ -86,8 +86,12 @@ class NMEAGraph(object):
             sv.append(k)
             theta.append(np.radians(np.average(v["az"])))
             r.append(90 - np.average(v["el"]))
-        ax.set_rlim(0, 90-thr["el"])
+        # ax.set_rlim(0, 90-thr["el"])
+        ax.set_rlim(0, 90)
         ax.set_yticklabels([])
+        ax.set_theta_zero_location('N')
+        ax.set_theta_direction(-1)
+        ax.set_thetagrids([i*45 for i in range(8)], ['N','NE','E','SE','S','SW','W','NW'])
         ax.plot(theta, r, 'o')
 
         for s, t, v in zip(sv, theta, r):
