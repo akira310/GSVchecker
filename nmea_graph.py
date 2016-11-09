@@ -76,7 +76,7 @@ class NMEAGraph(object):
         ax.set_title("avrg.:{}".format(avrg))
         for rect in rects:
             h = rect.get_height()
-            ax.text(rect.get_x(), h+2, int(h), ha='center', va='bottom')
+            ax.text(rect.get_x()+0.3, h, int(h), ha='center', va='bottom')
 
     def _create_polargraph(self, gsa, thr, ax):
         sv = list()
@@ -109,18 +109,22 @@ class NMEAGraph(object):
         ax.legend(bbox_to_anchor=(1, 1), loc=2, frameon=True)
 
 
-    def draw(self, thr):
+    def draw(self, thr, show):
         u""" グラフ描画 """
 
         # sns.set(palette='colorblind')
         sns.set_style("white")
-
         fig = plt.figure()
         fig.suptitle("tid [{}]".format(self._tid))
         gsa = self._check_thr(copy.deepcopy(self._gsaorg), thr)
-        self._create_bargraph(gsa, thr, fig.add_subplot(2, 2, 1))
-        self._create_polargraph(gsa, thr, fig.add_subplot(2, 2, 2, polar=True))
-        self._create_linegraph(gsa, thr, fig.add_subplot(2, 1, 2))
+        row = 2 if show["avrg"] or show["pos"] else 1
+        col = 2 if show["avrg"] and show["pos"] else 1
+        print(row, col)
+        if show["avrg"]:
+            self._create_bargraph(gsa, thr, fig.add_subplot(row, col, 1))
+        if show["pos"]:
+            self._create_polargraph(gsa, thr, fig.add_subplot(row, col, col, polar=True))
+        self._create_linegraph(gsa, thr, fig.add_subplot(row, 1, row))
         plt.show()
 
 

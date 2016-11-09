@@ -44,6 +44,8 @@ class MyGui(QtGui.QMainWindow):
         self._table = QtGui.QTableWidget()
         self._tableBtn = list()
         self._thr = {"sn": 15, "el": 5}
+        self._show = {"avrg": True, "pos": True}
+        self._menuobj = {}
         self._create()
 
     def closeEvent(self, event):
@@ -66,8 +68,11 @@ class MyGui(QtGui.QMainWindow):
 
         editMenu = menubar.addMenu('&Edit')
         threshMenu = editMenu.addMenu('Set Thresh')
-        threshMenu.addAction(self._create_menu_setthresh_sn())
-        threshMenu.addAction(self._create_menu_setthresh_el())
+        threshMenu.addAction(self._create_threshmenu("sn"))
+        threshMenu.addAction(self._create_threshmenu("el"))
+        showMenu = editMenu.addMenu('Show graph')
+        showMenu.addAction(self._create_showmenu("avrg"))
+        showMenu.addAction(self._create_showmenu("pos"))
 
     def _create_menu_fileopen(self):
         menu = QtGui.QAction(
@@ -79,6 +84,28 @@ class MyGui(QtGui.QMainWindow):
         menu.triggered.connect(self._open)
 
         return menu
+
+    def _create_threshmenu(self, key):
+        a = {"sn": {"menu": "C/N Thresh", "tip": "Set C/N Thresh"},
+                   "el": {"menu": "Elevation Thresh", "tip": "Set elevation Thresh"}}
+        if key in a:
+            menu = QtGui.QAction(a[key]["menu"], self)
+            menu.setStatusTip(a[key]["tip"])
+            menu.triggered.connect(lambda: self._set_thresh(key))
+            return menu
+        return None
+
+    def _create_showmenu(self, key):
+        a = {"avrg": {"menu": "Show average", "tip": "Show avereage"},
+             "pos": {"menu": "Show position", "tip": "Show position"}}
+        if key in a:
+            menu = QtGui.QAction(a[key]["menu"], self, checkable=True)
+            menu.setStatusTip(a[key]["tip"])
+            menu.triggered.connect(lambda: self._set_show(key))
+            menu.setChecked(self._show[key])
+            self._menuobj[key] = menu
+            return menu
+        return None
 
     def _open(self):
         path = QtGui.QFileDialog.getExistingDirectory(self, 'Open Dir', '.')
@@ -93,39 +120,16 @@ class MyGui(QtGui.QMainWindow):
 
         self._show_table(trip)
 
-    def _create_menu_setthresh_sn(self):
-        menu = QtGui.QAction(
-                    QtGui.QApplication.style()
-                    .standardIcon(QtGui.QStyle.SP_DialogApplyButton),
-                    'C/N Thresh', self)
-        # menu.setShortcut('Ctrl+T')
-        menu.setStatusTip('Set C/N Thresh')
-        menu.triggered.connect(self._setthresh_sn)
-
-        return menu
-
-    def _create_menu_setthresh_el(self):
-        menu = QtGui.QAction(
-                    QtGui.QApplication.style()
-                    .standardIcon(QtGui.QStyle.SP_DialogApplyButton),
-                    'elevation Thresh', self)
-        # menu.setShortcut('Ctrl+T')
-        menu.setStatusTip('Set elevation Thresh')
-        menu.triggered.connect(self._setthresh_el)
-
-        return menu
-
-    def _setthresh_sn(self):
-        thr, ok = QtGui.QInputDialog.getInt(self, "Input", "Set SN thresh (dB)",
-                                            value=self._thr["sn"], min=0, max=100, step=1)
+    def _set_thresh(self, key):
+        a = {"sn": {"title": "Input", "str": "Set SN thresh (dB)", "min": 0, "max": 100, "step": 1},
+             "el": {"title": "Input", "str": "Set elevation thresh (deg)", "min": 0, "max": 90, "step": 1}}
+        thr, ok = QtGui.QInputDialog.getInt(self, a[key]["title"], a[key]["str"], value=self._thr[key],
+                                            min=a[key]["min"], max=a[key]["max"], step=a[key]["step"])
         if ok:
-            self._thr["sn"] = thr
+            self._thr[key] = thr
 
-    def _setthresh_el(self):
-        thr, ok = QtGui.QInputDialog.getInt(self, "Input", "Set elevation thresh (deg)",
-                                            value=self._thr["el"], min=0, max=90, step=1)
-        if ok:
-            self._thr["el"] = thr
+    def _set_show(self, key):
+        self._show[key] = self._menuobj[key].isChecked()
 
     def _create_log_area(self):
         self.top_dock = QtGui.QDockWidget("log", self)
@@ -225,7 +229,7 @@ class MyGui(QtGui.QMainWindow):
                 break
         btn = QtGui.QPushButton(text)
         graph = nmea_graph.NMEAGraph(tid, gps)
-        btn.clicked.connect(lambda: graph.draw(self._thr))
+        btn.clicked.connect(lambda: graph.draw(self._thr, self._show))
         self._tableBtn.append([btn, graph])
         return btn
 
