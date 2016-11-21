@@ -114,9 +114,11 @@ class MyGui(QtGui.QMainWindow):
         trip = dict()
         print(path)
         for tid, files in nmea.concat_trip(path).items():
+            trip[tid] = {"fname": [], "gps": []}
             for f in files:
                 parsed = nmea.parse(f)
-                trip[tid] = parsed if tid not in trip else trip[tid] + parsed
+                trip[tid]["gps"] += parsed
+                trip[tid]["fname"].append(f)
 
         self._show_table(trip)
 
@@ -164,7 +166,8 @@ class MyGui(QtGui.QMainWindow):
         row = 0
         svlist = list()
 
-        for i, (tid, gps) in enumerate(trip.items()):
+        for i, (tid, value) in enumerate(sorted(trip.items(), key=lambda x: x[1]["fname"][0])):
+            gps = value["gps"]
             self._table.insertRow(row)
 
             chkbox = QtGui.QTableWidgetItem()
@@ -193,7 +196,8 @@ class MyGui(QtGui.QMainWindow):
                 self._table.setItem(row, 0,
                         QtGui.QTableWidgetItem(self._str_datetime(gps[j]["RMC"])))
                 if "GSV" in gps[j]:
-                    self._table.setItem(row, 1, QtGui.QTableWidgetItem(str(len(gps[j]["GSV"]["sv"]))))
+                    self._table.setItem(row, 1, QtGui.QTableWidgetItem(
+                                        "{}{}".format(str(len(gps[j]["GSV"]["sv"])),gps[j]["RMC"].status)))
 
                     for sv in gps[j]["GSV"]["sv"]:
                         if not sv["no"]:
