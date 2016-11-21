@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
+import os
 from PyQt4 import QtCore
 from PyQt4 import QtGui
 import nmea_parse  # my module
@@ -158,39 +159,34 @@ class MyGui(QtGui.QMainWindow):
         self.setCentralWidget(self._table)
 
     def _str_datetime(self, rmc):
-        return ("{}:{}".format(rmc.datestamp, rmc.timestamp))
+        return ("{}:{}".format(rmc.datestamp, rmc.timestamp) if rmc.timestamp else "----")
 
     def _show_table(self, trip):
         self._create_table_area()
         self._table.setRowCount(0)
         row = 0
         svlist = list()
+        btnrow = list()
 
-        for i, (tid, value) in enumerate(sorted(trip.items(), key=lambda x: x[1]["fname"][0])):
-            gps = value["gps"]
+        for i, (tid, parsed) in enumerate(sorted(trip.items(), key=lambda x: x[1]["fname"][0])):
+            gps = parsed["gps"]
             self._table.insertRow(row)
 
             chkbox = QtGui.QTableWidgetItem()
-            chkbox.setFlags(
-                    QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+            chkbox.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
             chkbox.setCheckState(QtCore.Qt.Unchecked)
             self._table.setItem(row, 0, chkbox)
             self._table.itemClicked.connect(self._item_clicked)
 
             self._table.setItem(row, 1, QtGui.QTableWidgetItem())
-            self._table.setCellWidget(row, 1, self._create_graphbtn(tid, (i, len(trip)), gps))
+            self._table.setCellWidget(row, 1, self._create_graphbtn(tid, (i, len(trip)), parsed))
             self._table.setSpan(row, 1, 1, 2)
-            btnrow = row
+            btnrow.append(row)
             row += 1
 
             for j in range(len(gps)):
-                if gps[j]["RMC"].timestamp == None:
-                    continue
-
-                if j > 0 \
-                   and gps[j]["RMC"].timestamp == gps[j-1]["RMC"].timestamp \
-                   and gps[j]["RMC"].datestamp == gps[j-1]["RMC"].datestamp:
-                    continue
+                # if gps[j]["RMC"].timestamp == None:
+                #     continue
 
                 self._table.insertRow(row)
                 self._table.setItem(row, 0,
@@ -219,22 +215,23 @@ class MyGui(QtGui.QMainWindow):
 
                 self._table.hideRow(row)
                 row += 1
-            self._table.setSpan(btnrow, 1, 1, self._table.columnCount()-1)
-            self._table.setHorizontalHeaderLabels(self._label+svlist)
 
-    def _create_graphbtn(self, tid, tripnum, gps):
-        text = "???"
-        for i in range(len(gps)):
-            if gps[i]["RMC"].timestamp != None:
-                text = "{}({}/{}): {} - {}".format(
-                        tid, tripnum[0]+1, tripnum[1],
-                        self._str_datetime(gps[i]["RMC"]),
-                        self._str_datetime(gps[-1]["RMC"]))
-                break
+        self._table.setHorizontalHeaderLabels(self._label+svlist)
+        for row in btnrow:
+            self._table.setSpan(row, 1, 1, self._table.columnCount()-1)
+
+    def _create_graphbtn(self, tid, tripnum, parsed):
+        fname = lambda s: os.path.splitext(os.path.basename(s))[0]
+        text = fname(parsed["fname"][0])
+        if len(parsed["fname"]) > 1:
+            text += " - " + fname(parsed["fname"][-1])
         btn = QtGui.QPushButton(text)
-        graph = nmea_graph.NMEAGraph(tid, gps)
+        btn.setStyleSheet("Text-align:left")
+
+        graph = nmea_graph.NMEAGraph(tid, parsed["gps"])
         btn.clicked.connect(lambda: graph.draw(self._thr, self._show))
         self._tableBtn.append([btn, graph])
+
         return btn
 
 
