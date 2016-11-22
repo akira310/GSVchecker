@@ -105,7 +105,8 @@ class NMEAGraph(object):
             return
         for k, v in sorted(gsa["sv"].items(), key=lambda x: int(x[0])):
             ax.plot(v["sn"], label=k)
-        ax.set_xticklabels(gsa["time"], rotation=15, fontsize="small")
+        ax.set_xticks([0, len(gsa["time"])//2, len(gsa["time"])-1])
+        ax.set_xticklabels([gsa["time"][0],gsa["time"][len(gsa["time"])//2], gsa["time"][-1]], rotation=15, fontsize="small")
         ax.legend(bbox_to_anchor=(1, 1), loc=2, frameon=True)
 
 
@@ -119,7 +120,6 @@ class NMEAGraph(object):
         gsa = self._check_thr(copy.deepcopy(self._gsaorg), thr)
         row = 2 if show["avrg"] or show["pos"] else 1
         col = 2 if show["avrg"] and show["pos"] else 1
-        print(row, col)
         if show["avrg"]:
             self._create_bargraph(gsa, thr, fig.add_subplot(row, col, 1))
         if show["pos"]:
