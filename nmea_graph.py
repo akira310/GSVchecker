@@ -72,8 +72,9 @@ class NMEAGraph(object):
             y.append(np.average(v["sn"]))
         rects = ax.bar(left=[x for x in range(len(x))], height=y, tick_label=x)
 
-        avrg = np.average(y) if len(y) > 0 else 0
-        ax.set_title("avrg.:{}".format(avrg))
+        svnum = len(y)
+        avrg = np.average(sorted(y, reverse=True)[:3]) if svnum >= 3 else 0
+        ax.set_title("num:{}   top3 avrg.{:.1f}".format(svnum, avrg))
         for rect in rects:
             h = rect.get_height()
             ax.text(rect.get_x()+0.3, h, int(h), ha='center', va='bottom')
