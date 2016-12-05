@@ -3,12 +3,12 @@
 
 import sys
 import os
+import logging
+import logging.config
 from PyQt4 import QtCore
 from PyQt4 import QtGui
 import nmea_parse  # my module
 import nmea_graph  # my module
-import logging
-import logging.config
 
 
 class GuiLogger(object):
@@ -77,9 +77,8 @@ class MyGui(QtGui.QMainWindow):
 
     def _create_menu_fileopen(self):
         menu = QtGui.QAction(
-                    QtGui.QApplication.style()
-                    .standardIcon(QtGui.QStyle.SP_FileDialogStart),
-                    'Open', self)
+                QtGui.QApplication.style().standardIcon(QtGui.QStyle.SP_FileDialogStart),
+                'Open', self)
         menu.setShortcut('Ctrl+O')
         menu.setStatusTip('Open Dir')
         menu.triggered.connect(self._open)
@@ -88,7 +87,7 @@ class MyGui(QtGui.QMainWindow):
 
     def _create_threshmenu(self, key):
         a = {"sn": {"menu": "C/N Thresh", "tip": "Set C/N Thresh"},
-                   "el": {"menu": "Elevation Thresh", "tip": "Set elevation Thresh"}}
+             "el": {"menu": "Elevation Thresh", "tip": "Set elevation Thresh"}}
         if key in a:
             menu = QtGui.QAction(a[key]["menu"], self)
             menu.setStatusTip(a[key]["tip"])
@@ -124,8 +123,10 @@ class MyGui(QtGui.QMainWindow):
         self._show_table(trip)
 
     def _set_thresh(self, key):
-        a = {"sn": {"title": "Input", "str": "Set SN thresh (dB)", "min": 0, "max": 100, "step": 1},
-             "el": {"title": "Input", "str": "Set elevation thresh (deg)", "min": 0, "max": 90, "step": 1}}
+        a = {"sn": {"title": "Input", "str": "Set SN thresh (dB)",
+                    "min": 0, "max": 100, "step": 1},
+             "el": {"title": "Input", "str": "Set elevation thresh (deg)",
+                    "min": 0, "max": 90, "step": 1}}
         thr, ok = QtGui.QInputDialog.getInt(self, a[key]["title"], a[key]["str"], value=self._thr[key],
                                             min=a[key]["min"], max=a[key]["max"], step=a[key]["step"])
         if ok:
@@ -145,7 +146,11 @@ class MyGui(QtGui.QMainWindow):
         sys.stderr = GuiLogger(self._text, sys.stderr, QtGui.QColor("red"))
 
         self._text.setTextColor(QtGui.QColor("blue"))
-        self._text.setText(self._get_readme())
+        readme = \
+            "\n==========================================================\n" +\
+            " SDカードデータのrootディレクトリを指定してください" +\
+            "\n==========================================================\n\n"
+        self._text.setText(readme)
 
     def _create_table_area(self):
         self._label = ["time", "sv num"]
@@ -153,13 +158,14 @@ class MyGui(QtGui.QMainWindow):
         self._table.setRowCount(0)
         self._table.setColumnCount(len(self._label))
         self._table.setHorizontalHeaderLabels(self._label)
-        for i,w in enumerate(self._labelwidth):
+        for i, w in enumerate(self._labelwidth):
             self._table.setColumnWidth(i, w)
         self._table.verticalHeader().setVisible(False)
         self.setCentralWidget(self._table)
 
-    def _str_datetime(self, rmc):
-        return ("{}:{}".format(rmc.datestamp, rmc.timestamp) if rmc.timestamp else "----")
+    @staticmethod
+    def _str_datetime(rmc):
+        return "{}:{}".format(rmc.datestamp, rmc.timestamp) if rmc.timestamp else "----"
 
     def _show_table(self, trip):
         self._create_table_area()
@@ -168,7 +174,7 @@ class MyGui(QtGui.QMainWindow):
         svlist = list()
         btnrow = list()
 
-        for i, (tid, parsed) in enumerate(sorted(trip.items(), key=lambda x: x[1]["fname"][0])):
+        for (tid, parsed) in sorted(trip.items(), key=lambda x: x[1]["fname"][0]):
             gps = parsed["gps"]
             self._table.insertRow(row)
 
@@ -179,23 +185,21 @@ class MyGui(QtGui.QMainWindow):
             self._table.itemClicked.connect(self._item_clicked)
 
             self._table.setItem(row, 1, QtGui.QTableWidgetItem())
-            self._table.setCellWidget(row, 1, self._create_graphbtn(tid, (i, len(trip)), parsed))
+            self._table.setCellWidget(row, 1, self._create_graphbtn(tid, parsed))
             self._table.setSpan(row, 1, 1, 2)
             btnrow.append(row)
             row += 1
 
-            for j in range(len(gps)):
-                # if gps[j]["RMC"].timestamp == None:
-                #     continue
-
+            for gpsone in gps:
                 self._table.insertRow(row)
                 self._table.setItem(row, 0,
-                        QtGui.QTableWidgetItem(self._str_datetime(gps[j]["RMC"])))
-                if "GSV" in gps[j]:
-                    self._table.setItem(row, 1, QtGui.QTableWidgetItem(
-                                        "{}{}".format(str(len(gps[j]["GSV"]["sv"])),gps[j]["RMC"].status)))
+                                    QtGui.QTableWidgetItem(self._str_datetime(gpsone["RMC"])))
+                if "GSV" in gpsone:
+                    self._table.setItem(row, 1,
+                                        QtGui.QTableWidgetItem(
+                                            "{}{}".format(str(len(gpsone["GSV"]["sv"])), gpsone["RMC"].status)))
 
-                    for sv in gps[j]["GSV"]["sv"]:
+                    for sv in gpsone["GSV"]["sv"]:
                         if not sv["no"]:
                             continue
 
@@ -207,8 +211,8 @@ class MyGui(QtGui.QMainWindow):
                         self._table.setItem(row, svlist.index(sv["no"])+len(self._label),
                                             QtGui.QTableWidgetItem("{}".format(sv["sn"] if sv["sn"] else "-")))
 
-                if "GSA" in gps[j]:
-                    for used in gps[j]["GSA"]["sv"]:
+                if "GSA" in gpsone:
+                    for used in gpsone["GSA"]["sv"]:
                         item = self._table.item(row, svlist.index(used)+len(self._label))
                         if item:
                             item.setBackgroundColor(QtGui.QColor("cyan"))
@@ -220,7 +224,7 @@ class MyGui(QtGui.QMainWindow):
         for row in btnrow:
             self._table.setSpan(row, 1, 1, self._table.columnCount()-1)
 
-    def _create_graphbtn(self, tid, tripnum, parsed):
+    def _create_graphbtn(self, tid, parsed):
         fname = lambda s: os.path.splitext(os.path.basename(s))[0]
         text = fname(parsed["fname"][0])
         if len(parsed["fname"]) > 1:
@@ -243,12 +247,6 @@ class MyGui(QtGui.QMainWindow):
             else:
                 self._table.hideRow(row)
             row += 1
-
-    def _get_readme(self):
-        return \
-            "\n==========================================================\n" +\
-            " SDカードデータのrootディレクトリを指定してください" +\
-            "\n==========================================================\n\n"
 
 
 def main():
