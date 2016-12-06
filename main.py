@@ -45,7 +45,7 @@ class MyGui(QtGui.QMainWindow):
         self._table = QtGui.QTableWidget()
         self._tableBtn = list()
         self._thr = {"sn": 15, "el": 5}
-        self._show = {"avrg": True, "pos": True}
+        self._show = {"avrg": True, "pos": True, "gsamode": True}
         self._menuobj = {}
         self._create()
 
@@ -72,6 +72,7 @@ class MyGui(QtGui.QMainWindow):
         threshMenu.addAction(self._create_threshmenu("sn"))
         threshMenu.addAction(self._create_threshmenu("el"))
         showMenu = editMenu.addMenu('Show graph')
+        showMenu.addAction(self._create_showmenu("gsamode"))
         showMenu.addAction(self._create_showmenu("avrg"))
         showMenu.addAction(self._create_showmenu("pos"))
 
@@ -97,7 +98,8 @@ class MyGui(QtGui.QMainWindow):
 
     def _create_showmenu(self, key):
         a = {"avrg": {"menu": "Show average", "tip": "Show avereage"},
-             "pos": {"menu": "Show position", "tip": "Show position"}}
+             "pos": {"menu": "Show position", "tip": "Show position"},
+             "gsamode": {"menu": "Use GSA", "tip": "Use GSA"}}
         if key in a:
             menu = QtGui.QAction(a[key]["menu"], self, checkable=True)
             menu.setStatusTip(a[key]["tip"])
@@ -165,7 +167,7 @@ class MyGui(QtGui.QMainWindow):
 
     @staticmethod
     def _str_datetime(rmc):
-        return "{}:{}".format(rmc.datestamp, rmc.timestamp) if rmc.timestamp else "----"
+        return "{} {}".format(rmc.datestamp, rmc.timestamp) if rmc.timestamp else "----"
 
     def _show_table(self, trip):
         self._create_table_area()

@@ -9,44 +9,78 @@ import seaborn as sns
 import numpy as np
 
 
-def add_sv2gsa(gps, gsa):
-    for used in gps["GSA"]["sv"]:
+def check_thr(gps, thr, show):
+    poplist = list()
+    for k, v in gps["sv"].items():
+        if (np.average(v["sn"]) < thr["sn"]) or \
+           (show["gsamode"] and np.average(v["el"]) < thr["el"]):
+            poplist.append(k)
+    for k in poplist:
+        gps["sv"].pop(k)
+    return gps
+
+
+def make_timestr(rmc):
+    if rmc.datestamp and rmc.timestamp:
+        return "{}/{} {}".format(rmc.datestamp.month, rmc.datestamp.day, rmc.timestamp)
+    return "----"
+
+
+def add_gsadata(gsasv, sv, gsa):
+    # check SV No.
+    for used in gsasv:
         if used not in gsa["sv"]:
             gsa["sv"][used] = copy.deepcopy(gsa["sv"]["dummy"])
 
+    # add gsv data
+    if sv["no"] in gsa["sv"]:
+        gsa["sv"][sv["no"]]["sn"].append(int(sv["sn"] if sv["sn"] else 0))
+        if sv["el"]:
+            gsa["sv"][sv["no"]]["el"].append(int(sv["el"]))
+        if sv["az"]:
+            gsa["sv"][sv["no"]]["az"].append(int(sv["az"]))
 
-def add_sn2gsa(gps, gsa):
-    for sv in gps["GSV"]["sv"]:
-        if sv["no"] in gsa["sv"]:
-            gsa["sv"][sv["no"]]["sn"].append(int(sv["sn"] if sv["sn"] else 0))
-            gsa["sv"][sv["no"]]["el"].append(int(sv["el"] if sv["el"] else 0))
-            if sv["az"]:
-                gsa["sv"][sv["no"]]["az"].append(int(sv["az"]))
     gsa["sv"]["dummy"]["sn"].append(0)
     gsa["sv"]["dummy"]["el"].append(0)
 
 
-def check_thr(gsa, thr):
-    poplist = list()
-    for k, v in gsa["sv"].items():
-        if np.average(v["sn"]) < thr["sn"] or np.average(v["el"]) < thr["el"]:
-            poplist.append(k)
-    for k in poplist:
-        gsa["sv"].pop(k)
-    return gsa
+def add_gsvdata(gps, gsv, gsa):
+    if "GSV" in gps:
+        for sv in gps["GSV"]["sv"]:
+            # check SV No.
+            if sv["no"] not in gsv["sv"]:
+                gsv["sv"][sv["no"]] = copy.deepcopy(gsv["sv"]["dummy"])
+
+            gsv["sv"][sv["no"]]["sn"].append(int(sv["sn"] if sv["sn"] else 0))
+            if sv["el"]:
+                gsv["sv"][sv["no"]]["el"].append(int(sv["el"]))
+            if sv["az"]:
+                gsv["sv"][sv["no"]]["az"].append(int(sv["az"]))
+
+            if "GSA" in gps:
+                add_gsadata(gps["GSA"]["sv"], sv, gsa)
+
+    gsv["sv"]["dummy"]["sn"].append(0)
+    gsv["sv"]["dummy"]["el"].append(0)
 
 
-def create_gsa(gpslist):
-    gsa = {"sv": {"dummy": {"sn": [], "el": [], "az": []}}, "time": []}
-    for gps in gpslist:
+def create_gpsdata(gpsinput):
+    dummy = {"sv": {"dummy": {"sn": [], "el": [], "az": []}}, "time": []}
+    gsa = copy.deepcopy(dummy)
+    gsv = copy.deepcopy(dummy)
+
+    for gps in gpsinput:
+        now = make_timestr(gps["RMC"])
+        gsv["time"].append(now)
         if "GSA" in gps:
-            add_sv2gsa(gps, gsa)
-            add_sn2gsa(gps, gsa)
-            gsa["time"].append("{}/{} {}".format(gps["RMC"].datestamp.month,
-                                                 gps["RMC"].datestamp.day,
-                                                 gps["RMC"].timestamp))
+            gsa["time"].append(now)
+
+        add_gsvdata(gps, gsv, gsa)
+
     gsa["sv"].pop("dummy")
-    return gsa
+    gsv["sv"].pop("dummy")
+
+    return gsv, gsa
 
 
 class NMEAGraph(object):
@@ -55,19 +89,19 @@ class NMEAGraph(object):
     パースされたデータを元にグラフを描画する
     """
 
-    def __init__(self, tid, gps):
+    def __init__(self, tid, gpsinput):
         self._log = logging.getLogger(__name__)
         self._tid = tid
-        self._gsaorg = create_gsa(gps)
+        self._gsv, self._gsa = create_gpsdata(gpsinput)
 
     @staticmethod
-    def _create_bargraph(gsa, thr, ax):
+    def _create_bargraph(gps, thr, ax):
         ax.set_ylim(thr["sn"], 50)
         x = list()
         y = list()
-        if len(gsa) < 1:
+        if len(gps) < 1:
             return
-        for k, v in sorted(gsa["sv"].items(), key=lambda x: int(x[0])):
+        for k, v in sorted(gps["sv"].items(), key=lambda x: int(x[0])):
             x.append(k)
             y.append(np.average(v["sn"]))
         rects = ax.bar(left=[x for x in range(len(x))], height=y, tick_label=x)
@@ -82,14 +116,16 @@ class NMEAGraph(object):
                     ha='center', va='bottom')
 
     @staticmethod
-    def _create_polargraph(gsa, ax):
+    def _create_polargraph(gps, gsamode, ax):
         sv = list()
         theta = list()
         r = list()
-        for k, v in sorted(gsa["sv"].items(), key=lambda x: int(x[0])):
-            sv.append(k)
-            theta.append(np.radians(np.average(v["az"])))
-            r.append(90 - np.average(v["el"]))
+
+        if gsamode:
+            for k, v in gps["sv"].items():
+                sv.append(k)
+                theta.append(np.radians(np.average(v["az"])))
+                r.append(90 - np.average(v["el"]))
         ax.set_rlim(0, 90)
         ax.set_yticklabels([])
         ax.set_theta_zero_location('N')
@@ -102,17 +138,16 @@ class NMEAGraph(object):
             ax.text(t, v, s)
 
     @staticmethod
-    def _create_linegraph(gsa, thr, ax):
+    def _create_linegraph(gps, thr, ax):
         ax.set_title("fixed SN")
         ax.set_ylabel("CN")
         ax.set_ylim(thr["sn"], 50)
-        if len(gsa) < 1:
+        if len(gps) < 1:
             return
-        for k, v in sorted(gsa["sv"].items(), key=lambda x: int(x[0])):
+        for k, v in sorted(gps["sv"].items(), key=lambda x: int(x[0])):
             ax.plot(v["sn"], label=k)
-        ax.set_xticks([0, len(gsa["time"])//2, len(gsa["time"])-1])
-        ax.set_xticklabels([gsa["time"][0], gsa["time"][len(gsa["time"])//2],
-                            gsa["time"][-1]],
+        ax.set_xticks([0, len(gps["time"])//2, len(gps["time"])-1])
+        ax.set_xticklabels([gps["time"][0], gps["time"][len(gps["time"])//2], gps["time"][-1]],
                            rotation=15, fontsize="small")
         ax.legend(bbox_to_anchor=(1, 1), loc=2, frameon=True)
 
@@ -123,15 +158,17 @@ class NMEAGraph(object):
         sns.set_style("white")
         fig = plt.figure()
         fig.suptitle("tid [{}]".format(self._tid))
-        gsa = check_thr(copy.deepcopy(self._gsaorg), thr)
+        gsamode = True if show["gsamode"] and len(self._gsa["sv"]) else False
+        gps = copy.deepcopy(self._gsa if gsamode else self._gsv)
+
+        gps = check_thr(gps, thr, show)
         row = 2 if show["avrg"] or show["pos"] else 1
         col = 2 if show["avrg"] and show["pos"] else 1
         if show["avrg"]:
-            self._create_bargraph(gsa, thr, fig.add_subplot(row, col, 1))
+            self._create_bargraph(gps, thr, fig.add_subplot(row, col, 1))
         if show["pos"]:
-            self._create_polargraph(gsa,
-                                    fig.add_subplot(row, col, col, polar=True))
-        self._create_linegraph(gsa, thr, fig.add_subplot(row, 1, row))
+            self._create_polargraph(gps, gsamode, fig.add_subplot(row, col, col, polar=True))
+        self._create_linegraph(gps, thr, fig.add_subplot(row, 1, row))
         plt.show()
 
 
