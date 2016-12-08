@@ -3,6 +3,7 @@
 
 import sys
 import os
+import datetime
 import logging
 import logging.config
 from PyQt4 import QtCore
@@ -32,6 +33,92 @@ class GuiLogger(object):
         self.out.write(message) if self.out else ""
 
 
+class TimeSet(QtGui.QHBoxLayout):
+    def __init__(self, label="---"):
+        super().__init__()
+
+        self._time = dict()
+        now = datetime.datetime.now()
+        for s in ["year", "month", "day", "hour", "minute", "second"]:
+            self._time[s] = QtGui.QLineEdit(str(eval("now."+s)))
+            self._time[s].setFixedWidth(30)
+
+        self._chk = QtGui.QCheckBox(label)
+        self._chk.setCheckState(QtCore.Qt.Unchecked)
+        self.addWidget(self._chk)
+        self.addWidget(self._time["year"])
+        self.addWidget(QtGui.QLabel("/"))
+        self.addWidget(self._time["month"])
+        self.addWidget(QtGui.QLabel("/"))
+        self.addWidget(self._time["day"])
+        self.addWidget(QtGui.QLabel("-"))
+        self.addWidget(self._time["hour"])
+        self.addWidget(QtGui.QLabel(":"))
+        self.addWidget(self._time["minute"])
+        self.addWidget(QtGui.QLabel(":"))
+        self.addWidget(self._time["second"])
+
+
+    def get(self):
+        if self._chk.isChecked():
+            try:
+                conv = lambda k: int(self._time[k].text())
+                return datetime.datetime(
+                        conv("year"), conv("month"), conv("day"),
+                        conv("hour"), conv("minute"), conv("second"))
+            except ValueError:
+                pass
+            except Exception as e:
+                logging.error(e)
+        return None
+
+
+class TimeSelect:
+    def __init__(self, parent=None):
+        self._dialog = QtGui.QDialog(parent)
+        vbox = QtGui.QVBoxLayout()
+
+        self._stime = None
+        self._start = TimeSet("start")
+        vbox.addLayout(self._start)
+
+        self._etime = None
+        self._end = TimeSet("end  ")
+        vbox.addLayout(self._end)
+
+        btn = QtGui.QHBoxLayout()
+        self._btn_apply = QtGui.QPushButton("apply")
+        self._btn_apply.clicked.connect(self._apply)
+        btn.addWidget(self._btn_apply)
+        self._btn_cancel = QtGui.QPushButton("cancel")
+        self._btn_cancel.clicked.connect(self._dialog.close)
+        btn.addWidget(self._btn_cancel)
+        vbox.addLayout(btn)
+
+        self._dialog.setLayout(vbox)
+        self._dialog.setWindowTitle("Time select")
+
+    def _apply(self):
+        stime = self._start.get()
+        etime = self._end.get()
+
+        if stime and etime and stime > etime:
+            self._stime = None
+            self._etime = None
+        else:
+            self._stime = stime
+            self._etime = etime
+
+        self._dialog.close()
+
+    def get(self):
+        return (self._stime, self._etime)
+
+    def show(self):
+        self._dialog.show()
+        self._dialog.exec_()
+
+
 class MyGui(QtGui.QMainWindow):
     u""" GUI用クラス
 
@@ -46,6 +133,7 @@ class MyGui(QtGui.QMainWindow):
         self._tableBtn = list()
         self._thr = {"sn": 1, "el": 0}
         self._show = {"avrg": True, "pos": True, "gsamode": True}
+        self._timeselect = TimeSelect(self)
         self._menuobj = {}
         self._create()
 
@@ -69,6 +157,7 @@ class MyGui(QtGui.QMainWindow):
 
         editMenu = menubar.addMenu('&Edit')
         threshMenu = editMenu.addMenu('Set Thresh')
+        threshMenu.addAction(self._create_timewidthmenu())
         threshMenu.addAction(self._create_threshmenu("sn"))
         threshMenu.addAction(self._create_threshmenu("el"))
         showMenu = editMenu.addMenu('Show graph')
@@ -95,6 +184,12 @@ class MyGui(QtGui.QMainWindow):
             menu.triggered.connect(lambda: self._set_thresh(key))
             return menu
         return None
+
+    def _create_timewidthmenu(self):
+        menu = QtGui.QAction("Time width select", self)
+        menu.setStatusTip("select time width")
+        menu.triggered.connect(self._timeselect.show)
+        return menu
 
     def _create_showmenu(self, key):
         a = {"avrg": {"menu": "Show average", "tip": "Show avereage"},
@@ -235,7 +330,7 @@ class MyGui(QtGui.QMainWindow):
         btn.setStyleSheet("Text-align:left")
 
         graph = nmea_graph.NMEAGraph(tid, parsed["gps"])
-        btn.clicked.connect(lambda: graph.draw(self._thr, self._show))
+        btn.clicked.connect(lambda: graph.draw(self._thr, self._show, self._timeselect.get()))
         self._tableBtn.append([btn, graph])
 
         return btn

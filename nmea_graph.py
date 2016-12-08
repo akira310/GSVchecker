@@ -4,12 +4,13 @@
 import sys
 import logging
 import copy
+import datetime
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
 
-def check_thr(gps, thr, show):
+def check_thr(gps, thr, show, timewidth):
     poplist = list()
     for k, v in gps["sv"].items():
         if (np.average(v["sn"]) < thr["sn"]) or \
@@ -17,12 +18,34 @@ def check_thr(gps, thr, show):
             poplist.append(k)
     for k in poplist:
         gps["sv"].pop(k)
+
+    print(timewidth)
+    if timewidth[0]:    # start time
+        for i, t in enumerate(gps["time"]):
+            dt = datetime.datetime.combine(t[0], t[1])
+            if timewidth[0] <= dt:
+                gps["time"] = gps["time"][i:]
+                for v in gps["sv"].values():
+                    for k in ["sn", "el", "az"]:
+                        v[k] = v[k][i:]
+                break
+
+    if timewidth[1]:    # end time
+        for i, t in enumerate(reversed(gps["time"])):
+            dt = datetime.datetime.combine(t[0], t[1])
+            if timewidth[1] >= dt:
+                gps["time"] = gps["time"][:len(gps)-i]
+                for v in gps["sv"].values():
+                    for k in ["sn", "el", "az"]:
+                        v[k] = v[k][:len(gps)-i]
+                break
+
     return gps
 
 
-def make_timestr(rmc):
-    if rmc.datestamp and rmc.timestamp:
-        return "{}/{} {}".format(rmc.datestamp.month, rmc.datestamp.day, rmc.timestamp)
+def make_timestr(t):
+    if t:
+        return "{}/{} {}".format(t[0].month, t[0].day, t[1])
     return "----"
 
 
@@ -65,12 +88,13 @@ def add_gsvdata(gps, gsv, gsa):
 
 
 def create_gpsdata(gpsinput):
-    dummy = {"sv": {"dummy": {"sn": [], "el": [], "az": []}}, "time": []}
-    gsa = copy.deepcopy(dummy)
-    gsv = copy.deepcopy(dummy)
+    base = {"sv": {"dummy": {"sn": [], "el": [], "az": []}}, "time": []}
+    gsa = copy.deepcopy(base)
+    gsv = copy.deepcopy(base)
 
     for gps in gpsinput:
-        now = make_timestr(gps["RMC"])
+        rmc = gps["RMC"]
+        now = (rmc.datestamp, rmc.timestamp) if rmc.datestamp and rmc.timestamp else None
         gsv["time"].append(now)
         if "GSA" in gps:
             gsa["time"].append(now)
@@ -147,11 +171,13 @@ class NMEAGraph(object):
         for k, v in sorted(gps["sv"].items(), key=lambda x: int(x[0])):
             ax.plot(v["sn"], label=k)
         ax.set_xticks([0, len(gps["time"])//2, len(gps["time"])-1])
-        ax.set_xticklabels([gps["time"][0], gps["time"][len(gps["time"])//2], gps["time"][-1]],
+        ax.set_xticklabels([make_timestr(gps["time"][0]),
+                            make_timestr(gps["time"][len(gps["time"])//2]),
+                            make_timestr(gps["time"][-1])],
                            rotation=15, fontsize="small")
         ax.legend(bbox_to_anchor=(1, 1), loc=2, frameon=True)
 
-    def draw(self, thr, show):
+    def draw(self, thr, show, timewidth):
         u""" グラフ描画 """
 
         # sns.set(palette='colorblind')
@@ -161,7 +187,7 @@ class NMEAGraph(object):
         gsamode = True if show["gsamode"] and len(self._gsa["sv"]) else False
         gps = copy.deepcopy(self._gsa if gsamode else self._gsv)
 
-        gps = check_thr(gps, thr, show)
+        gps = check_thr(gps, thr, show, timewidth)
         row = 2 if show["avrg"] or show["pos"] else 1
         col = 2 if show["avrg"] and show["pos"] else 1
         if show["avrg"]:
