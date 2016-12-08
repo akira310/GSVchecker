@@ -44,7 +44,7 @@ class MyGui(QtGui.QMainWindow):
         self._text = QtGui.QTextEdit()
         self._table = QtGui.QTableWidget()
         self._tableBtn = list()
-        self._thr = {"sn": 15, "el": 5}
+        self._thr = {"sn": 1, "el": 0}
         self._show = {"avrg": True, "pos": True, "gsamode": True}
         self._menuobj = {}
         self._create()
