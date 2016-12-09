@@ -25,6 +25,7 @@ class NMEAParser(object):
             path: sd root path
 
         Returns:
+            i+1: total file 数
             dict_trip: tripIDごとにファイルをまとめたdict
                  * key1: tripID, value(list): 対応tripIDのファイルフルパス
         """
@@ -34,23 +35,23 @@ class NMEAParser(object):
         files = os.listdir(path)
         files.sort()
         dict_trip = {}
-        i = 0
+        dummy = 0
 
-        for file in files:
+        for i, file in enumerate(files):
             file = os.path.join(path, file)
             with open(file, "r") as f:
                 line = f.readline().split(",")
                 if "GTRIP" in line[0]:
                     key = line[-1].rstrip()
                 else:
-                    key = "dummy{}".format(i)
-                    i+=1
+                    key = "dummy{}".format(dummy)
+                    dummy+=1
 
                 if key not in dict_trip:
                     dict_trip[key] = list()
                 dict_trip[key].append(file)
 
-        return dict_trip
+        return i+1, dict_trip
 
     def parse(self, file):
         u""" NMEAセンテンスをパースする

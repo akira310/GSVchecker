@@ -19,9 +19,8 @@ class GuiLogger(object):
     """
 
     def __init__(self, editor, out=None, color=None):
-        self.editor = editor    # 結果出力用エディタ
-        self.out = out       # 標準出力・標準エラーなどの出力オブジェクト
-        # 結果出力時の色(Noneが指定されている場合、エディタの現在の色を入れる)
+        self.editor = editor
+        self.out = out
         self.color = editor.textColor() if not color else color
 
     def write(self, message):
@@ -34,6 +33,11 @@ class GuiLogger(object):
 
 
 class TimeSet(QtGui.QHBoxLayout):
+    u""" 日時情報設定用クラス
+
+    checkboxをTrueにして日時情報を入力する
+    """
+
     def __init__(self, label="---"):
         super().__init__()
 
@@ -74,6 +78,11 @@ class TimeSet(QtGui.QHBoxLayout):
 
 
 class TimeSelect:
+    u""" 有効日時設定クラス
+
+    グラフ化する際の開始日時,終了日時を設定する
+    """
+
     def __init__(self, parent=None):
         self._dialog = QtGui.QDialog(parent)
         vbox = QtGui.QVBoxLayout()
@@ -195,6 +204,7 @@ class MyGui(QtGui.QMainWindow):
         a = {"avrg": {"menu": "Show average", "tip": "Show avereage"},
              "pos": {"menu": "Show position", "tip": "Show position"},
              "gsamode": {"menu": "Use GSA", "tip": "Use GSA"}}
+
         if key in a:
             menu = QtGui.QAction(a[key]["menu"], self, checkable=True)
             menu.setStatusTip(a[key]["tip"])
@@ -202,21 +212,41 @@ class MyGui(QtGui.QMainWindow):
             menu.setChecked(self._show[key])
             self._menuobj[key] = menu
             return menu
+
         return None
 
     def _open(self):
         path = QtGui.QFileDialog.getExistingDirectory(self, 'Open Dir', '.')
+        print(path)
         self._text.clear()
         nmea = nmea_parse.NMEAParser()
         trip = dict()
-        print(path)
-        for tid, files in nmea.concat_trip(path).items():
+
+        filetotal, tids = nmea.concat_trip(path)
+
+        readfile = 0;
+        pbar = QtGui.QProgressDialog("Read files", "Cancel", 0, filetotal)
+        pbar.setWindowTitle("Read files")
+        pbar.setLabelText("loading...")
+        pbar.show()
+
+        for tid, files in tids.items():
             trip[tid] = {"fname": [], "gps": []}
             for f in files:
+                readfile += 1
+                pbar.setValue(readfile)
+                QtCore.QCoreApplication.processEvents()
+                if pbar.wasCanceled():
+                    break
+
                 parsed = nmea.parse(f)
                 trip[tid]["gps"] += parsed
                 trip[tid]["fname"].append(f)
 
+            if pbar.wasCanceled():
+                break
+
+        pbar.close()
         self._show_table(trip)
 
     def _set_thresh(self, key):
@@ -271,7 +301,15 @@ class MyGui(QtGui.QMainWindow):
         svlist = list()
         btnrow = list()
 
-        for (tid, parsed) in sorted(trip.items(), key=lambda x: x[1]["fname"][0]):
+        QtGui.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+        pbar = QtGui.QProgressDialog("Create data", "Cancel", 0, len(trip.keys()))
+        pbar.setWindowTitle("graph data create")
+        pbar.setLabelText("creating graph data..")
+        pbar.show()
+
+        for created, (tid, parsed) in enumerate(sorted(trip.items(), key=lambda x: x[1]["fname"][0])):
+            pbar.setValue(created+1)
+
             gps = parsed["gps"]
             self._table.insertRow(row)
 
@@ -318,8 +356,12 @@ class MyGui(QtGui.QMainWindow):
                 row += 1
 
         self._table.setHorizontalHeaderLabels(self._label+svlist)
+
         for row in btnrow:
             self._table.setSpan(row, 1, 1, self._table.columnCount()-1)
+
+        pbar.close()
+        QtGui.QApplication.restoreOverrideCursor()
 
     def _create_graphbtn(self, tid, parsed):
         fname = lambda s: os.path.splitext(os.path.basename(s))[0]
