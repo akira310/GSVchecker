@@ -217,8 +217,8 @@ class MyGui(QtGui.QMainWindow):
 
     def _open(self):
         path = QtGui.QFileDialog.getExistingDirectory(self, 'Open Dir', '.')
-        print(path)
         self._text.clear()
+        print(path)
         nmea = nmea_parse.NMEAParser()
         trip = dict()
 
@@ -391,7 +391,10 @@ class MyGui(QtGui.QMainWindow):
 def main():
     app = QtGui.QApplication(sys.argv)
     ex = MyGui()
-    logging.config.fileConfig('./logging.cfg', disable_existing_loggers=False)
+    try:
+        logging.config.fileConfig('./logging.cfg', disable_existing_loggers=False)
+    except Exception as e:
+        logging.error(e)
     sys.exit(app.exec_())
 
 

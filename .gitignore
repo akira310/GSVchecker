@@ -2,3 +2,6 @@
 !.gitignore
 20_走行データ.lnk
 __pycache__
+build
+dist
+cx_freeze
