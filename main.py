@@ -276,9 +276,13 @@ class MyGui(QtGui.QMainWindow):
         self._show[key] = self._menuobj[key].isChecked()
 
     def _show_version(self):
-        text = "ver.: " + myinfo.get("version") + "\n"\
-               "url:  " + myinfo.get("url")
-        QtGui.QMessageBox.information(self, "info", text)
+        msgbox = QtGui.QMessageBox()
+        msgbox.setIcon(QtGui.QMessageBox.Information)
+        msgbox.setWindowTitle("Info")
+        msgbox.setTextFormat(QtCore.Qt.RichText)
+        msgbox.setText("ver.: {}<br><br>".format(myinfo.get("version")) +
+                       "url : <a href='{url}'>{url}</a>".format(url=myinfo.get("url")))
+        msgbox.exec_()
 
 
     def _create_log_area(self):

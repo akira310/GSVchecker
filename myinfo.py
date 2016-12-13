@@ -5,7 +5,7 @@
 def get(prop):
     INFO = {
             "version": "1.00",
-            "url": "github.com/akira310/GSVchecker",
+            "url": "https://github.com/akira310/GSVchecker",
             "err": "Inavlid keyword",
             }
 
