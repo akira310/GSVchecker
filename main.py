@@ -10,6 +10,7 @@ from PyQt4 import QtCore
 from PyQt4 import QtGui
 import nmea_parse  # my module
 import nmea_graph  # my module
+import myinfo      # my module
 
 
 class GuiLogger(object):
@@ -162,7 +163,7 @@ class MyGui(QtGui.QMainWindow):
     def _create_menu(self):
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
-        fileMenu.addAction(self._create_menu_fileopen())
+        fileMenu.addAction(self._create_fileopenmenu())
 
         editMenu = menubar.addMenu('&Edit')
         threshMenu = editMenu.addMenu('Set Thresh')
@@ -174,7 +175,10 @@ class MyGui(QtGui.QMainWindow):
         showMenu.addAction(self._create_showmenu("avrg"))
         showMenu.addAction(self._create_showmenu("pos"))
 
-    def _create_menu_fileopen(self):
+        helpMenu = menubar.addMenu('&Help')
+        helpMenu.addAction(self._create_versionmenu())
+
+    def _create_fileopenmenu(self):
         menu = QtGui.QAction(
                 QtGui.QApplication.style().standardIcon(QtGui.QStyle.SP_FileDialogStart),
                 'Open', self)
@@ -214,6 +218,15 @@ class MyGui(QtGui.QMainWindow):
             return menu
 
         return None
+
+    def _create_versionmenu(self):
+        menu = QtGui.QAction(
+                QtGui.QApplication.style().standardIcon(QtGui.QStyle.SP_MessageBoxInformation),
+                "version", self)
+        menu.setStatusTip("show version")
+        menu.triggered.connect(self._show_version)
+        return menu
+
 
     def _open(self):
         path = QtGui.QFileDialog.getExistingDirectory(self, 'Open Dir', '.')
@@ -261,6 +274,12 @@ class MyGui(QtGui.QMainWindow):
 
     def _set_show(self, key):
         self._show[key] = self._menuobj[key].isChecked()
+
+    def _show_version(self):
+        text = "ver.: " + myinfo.get("version") + "\n"\
+               "url:  " + myinfo.get("url")
+        QtGui.QMessageBox.information(self, "info", text)
+
 
     def _create_log_area(self):
         self.top_dock = QtGui.QDockWidget("log", self)
