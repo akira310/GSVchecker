@@ -63,9 +63,6 @@ def add_gsadata(gsasv, sv, gsa):
         if sv["az"]:
             gsa["sv"][sv["no"]]["az"].append(int(sv["az"]))
 
-    gsa["sv"]["dummy"]["sn"].append(0)
-    gsa["sv"]["dummy"]["el"].append(0)
-
 
 def add_gsvdata(gps, gsv, gsa):
     if "GSV" in gps:
@@ -85,6 +82,9 @@ def add_gsvdata(gps, gsv, gsa):
 
     gsv["sv"]["dummy"]["sn"].append(0)
     gsv["sv"]["dummy"]["el"].append(0)
+    if "GSA" in gps:
+        gsa["sv"]["dummy"]["sn"].append(0)
+        gsa["sv"]["dummy"]["el"].append(0)
 
 
 def create_gpsdata(gpsinput):

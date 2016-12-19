@@ -413,11 +413,11 @@ class MyGui(QtGui.QMainWindow):
 
 def main():
     app = QtGui.QApplication(sys.argv)
-    ex = MyGui()
     try:
         logging.config.fileConfig('./logging.cfg', disable_existing_loggers=False)
     except Exception as e:
         logging.error(e)
+    ex = MyGui()
     sys.exit(app.exec_())
 
 
