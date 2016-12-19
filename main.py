@@ -143,6 +143,7 @@ class MyGui(QtGui.QMainWindow):
         self._tableBtn = list()
         self._thr = {"sn": 1, "el": 0}
         self._show = {"avrg": True, "pos": True, "gsamode": True}
+        self._dirpath = "."
         self._timeselect = TimeSelect(self)
         self._menuobj = {}
         self._create()
@@ -229,13 +230,13 @@ class MyGui(QtGui.QMainWindow):
 
 
     def _open(self):
-        path = QtGui.QFileDialog.getExistingDirectory(self, 'Open Dir', '.')
+        self._dirpath = QtGui.QFileDialog.getExistingDirectory(self, 'Open Dir', self._dirpath)
         self._text.clear()
-        print(path)
+        print(self._dirpath)
         nmea = nmea_parse.NMEAParser()
         trip = dict()
 
-        filetotal, tids = nmea.concat_trip(path)
+        filetotal, tids = nmea.concat_trip(self._dirpath)
 
         readfile = 0;
         pbar = QtGui.QProgressDialog("Read files", "Cancel", 0, filetotal)
