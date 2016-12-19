@@ -389,7 +389,7 @@ class MyGui(QtGui.QMainWindow):
 
     def _create_graphbtn(self, tid, parsed):
         fname = lambda s: os.path.splitext(os.path.basename(s))[0]
-        text = fname(parsed["fname"][0])
+        text = "[{}] {}".format(tid, fname(parsed["fname"][0]))
         if len(parsed["fname"]) > 1:
             text += " - " + fname(parsed["fname"][-1])
         btn = QtGui.QPushButton(text)
