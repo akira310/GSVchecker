@@ -41,33 +41,34 @@ class TimeSet(QtGui.QHBoxLayout):
 
     def __init__(self, label="---"):
         super().__init__()
+        self._initUI(label)
 
-        self._time = dict()
-        now = datetime.datetime.now()
-        for s in ["year", "month", "day", "hour", "minute", "second"]:
-            self._time[s] = QtGui.QLineEdit(str(eval("now."+s)))
-            self._time[s].setFixedWidth(30)
 
+    def _initUI(self, label):
         self._chk = QtGui.QCheckBox(label)
         self._chk.setCheckState(QtCore.Qt.Unchecked)
         self.addWidget(self._chk)
-        self.addWidget(self._time["year"])
-        self.addWidget(QtGui.QLabel("/"))
-        self.addWidget(self._time["month"])
-        self.addWidget(QtGui.QLabel("/"))
-        self.addWidget(self._time["day"])
-        self.addWidget(QtGui.QLabel("-"))
-        self.addWidget(self._time["hour"])
-        self.addWidget(QtGui.QLabel(":"))
-        self.addWidget(self._time["minute"])
-        self.addWidget(QtGui.QLabel(":"))
-        self.addWidget(self._time["second"])
+
+        list_s = ["year", "month", "day", "hour", "minute", "second"]
+        list_sep = ["/", "/", "  ", ":", ":", ""]
+        list_min = [2015, 1, 1, 0, 0, 0]
+        list_max = [2030, 12, 31, 23, 59, 59]
+        self._time = dict()
+        now = datetime.datetime.now()
+
+        for s, sep, mn, mx in zip(list_s, list_sep, list_min, list_max):
+            self._time[s] = QtGui.QSpinBox()
+            self._time[s].setMaximum(mx)
+            self._time[s].setMinimum(mn)
+            self._time[s].setValue(eval("now."+s))
+            self.addWidget(self._time[s])
+            self.addWidget(QtGui.QLabel(sep))
 
 
     def get(self):
         if self._chk.isChecked():
             try:
-                conv = lambda k: int(self._time[k].text())
+                conv = lambda k: self._time[k].value()
                 return datetime.datetime(
                         conv("year"), conv("month"), conv("day"),
                         conv("hour"), conv("minute"), conv("second"))
