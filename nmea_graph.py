@@ -161,21 +161,35 @@ class NMEAGraph(object):
         for s, t, v in zip(sv, theta, r):
             ax.text(t, v, s)
 
-    @staticmethod
-    def _create_linegraph(gps, thr, ax):
+    def _create_linegraph(self, gps, thr, ax):
         ax.set_title("fixed SN")
         ax.set_ylabel("CN")
         ax.set_ylim(thr["sn"], 50)
-        if len(gps) < 1:
+
+        if len(gps) < 1 or len(gps["time"]) < 3:
             return
+
         for k, v in sorted(gps["sv"].items(), key=lambda x: int(x[0])):
             ax.plot(v["sn"], label=k)
-        ax.set_xticks([0, len(gps["time"])//2, len(gps["time"])-1])
-        ax.set_xticklabels([make_timestr(gps["time"][0]),
-                            make_timestr(gps["time"][len(gps["time"])//2]),
-                            make_timestr(gps["time"][-1])],
+
+        timespan = self._get_linegraph_timesplit(gps["time"])
+        print(timespan)
+        ax.set_xticks(timespan)
+        ax.set_xticklabels(map(lambda i: make_timestr(gps["time"][i]), timespan),
                            rotation=15, fontsize="small")
         ax.legend(bbox_to_anchor=(1, 1), loc=2, frameon=True)
+
+    @staticmethod
+    def _get_linegraph_timesplit(time):
+        timelen = len(time)
+        splt = 5 if timelen >= 5 else timelen
+        l = [i for i in range(0, timelen-1, (timelen-1)//splt)]
+
+        # 分割した最後の値が終端に近すぎるとグラフ描画時に文字が重なるため削除
+        if (timelen-1)-l[-1] < (l[1]-l[0])/3:
+            l.pop(-1)
+
+        return l + [timelen-1]
 
     def draw(self, thr, show, timewidth):
         u""" グラフ描画 """
