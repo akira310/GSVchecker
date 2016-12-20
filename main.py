@@ -171,12 +171,12 @@ class MyGui(QtGui.QMainWindow):
         fileMenu.addAction(self._create_fileopenmenu())
 
         editMenu = menubar.addMenu('&Edit')
-        tzMenu = editMenu.addMenu('Time zone')
-        tzMenu.addAction(self._create_tzmenu())
         threshMenu = editMenu.addMenu('Set Thresh')
         threshMenu.addAction(self._create_timewidthmenu())
         threshMenu.addAction(self._create_threshmenu("sn"))
         threshMenu.addAction(self._create_threshmenu("el"))
+        tzMenu = editMenu.addMenu('Time zone')
+        tzMenu.addAction(self._create_tzmenu())
         showMenu = editMenu.addMenu('Show graph')
         showMenu.addAction(self._create_showmenu("gsamode"))
         showMenu.addAction(self._create_showmenu("avrg"))
@@ -434,8 +434,8 @@ class MyGui(QtGui.QMainWindow):
         btn = QtGui.QPushButton(text)
         btn.setStyleSheet("Text-align:left")
 
-        graph = nmea_graph.NMEAGraph(tid, parsed["gps"])
-        btn.clicked.connect(lambda: graph.draw(self._thr, self._show, self._timeselect.get(), self._tz))
+        graph = nmea_graph.NMEAGraph(tid, parsed["gps"], self._tz)
+        btn.clicked.connect(lambda: graph.draw(self._thr, self._show, self._timeselect.get()))
         self._tableBtn.append([btn, graph])
 
         return btn

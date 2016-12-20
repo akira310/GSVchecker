@@ -11,7 +11,11 @@ import seaborn as sns
 import numpy as np
 
 
-def check_thr(gps, thr, show, timewidth):
+def add_timediff(dt, tdiff):
+    return datetime.datetime.fromtimestamp(int(time.mktime(dt.timetuple())) + tdiff)
+
+
+def check_thr(gps, thr, show, timewidth, tdiff):
     poplist = list()
     for k, v in gps["sv"].items():
         if (np.average(v["sn"]) < thr["sn"]) or \
@@ -22,9 +26,10 @@ def check_thr(gps, thr, show, timewidth):
 
     print(timewidth)
     if timewidth[0]:    # start time
+        start = add_timediff(timewidth[0], -1*tdiff)
         for i, t in enumerate(gps["time"]):
             dt = datetime.datetime.combine(t[0], t[1])
-            if timewidth[0] <= dt:
+            if start <= dt:
                 gps["time"] = gps["time"][i:]
                 for v in gps["sv"].values():
                     for k in ["sn", "el", "az"]:
@@ -32,9 +37,10 @@ def check_thr(gps, thr, show, timewidth):
                 break
 
     if timewidth[1]:    # end time
+        end = add_timediff(timewidth[1], -1*tdiff)
         for i, t in enumerate(reversed(gps["time"])):
             dt = datetime.datetime.combine(t[0], t[1])
-            if timewidth[1] >= dt:
+            if end >= dt:
                 end = len(gps["time"])-i
                 gps["time"] = gps["time"][:end]
                 for v in gps["sv"].values():
@@ -47,9 +53,7 @@ def check_thr(gps, thr, show, timewidth):
 
 def make_timestr(t, tdiff):
     if t:
-        t_mod = datetime.datetime.fromtimestamp(
-                    int(time.mktime(datetime.datetime.combine(t[0], t[1]).timetuple()))
-                    + tdiff)
+        t_mod = add_timediff(datetime.datetime.combine(t[0], t[1]), tdiff)
         return "{}/{} {}".format(t_mod.date().month, t_mod.date().day, t_mod.time())
     return "----"
 
@@ -118,9 +122,10 @@ class NMEAGraph(object):
     パースされたデータを元にグラフを描画する
     """
 
-    def __init__(self, tid, gpsinput):
+    def __init__(self, tid, gpsinput, tz):
         self._log = logging.getLogger(__name__)
         self._tid = tid
+        self._tz = tz
         self._gsv, self._gsa = create_gpsdata(gpsinput)
 
     @staticmethod
@@ -195,7 +200,7 @@ class NMEAGraph(object):
 
         return l + [timelen-1]
 
-    def draw(self, thr, show, timewidth, tdiff=0):
+    def draw(self, thr, show, timewidth):
         u""" グラフ描画 """
 
         # sns.set(palette='colorblind')
@@ -205,14 +210,14 @@ class NMEAGraph(object):
         gsamode = True if show["gsamode"] and len(self._gsa["sv"]) else False
         gps = copy.deepcopy(self._gsa if gsamode else self._gsv)
 
-        gps = check_thr(gps, thr, show, timewidth)
+        gps = check_thr(gps, thr, show, timewidth, self._tz)
         row = 2 if show["avrg"] or show["pos"] else 1
         col = 2 if show["avrg"] and show["pos"] else 1
         if show["avrg"]:
             self._create_bargraph(gps, thr, fig.add_subplot(row, col, 1))
         if show["pos"]:
             self._create_polargraph(gps, gsamode, fig.add_subplot(row, col, col, polar=True))
-        self._create_linegraph(gps, thr, tdiff, fig.add_subplot(row, 1, row))
+        self._create_linegraph(gps, thr, self._tz, fig.add_subplot(row, 1, row))
         plt.show()
 
 
