@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
+import time
 import logging
 import copy
 import datetime
@@ -44,9 +45,12 @@ def check_thr(gps, thr, show, timewidth):
     return gps
 
 
-def make_timestr(t):
+def make_timestr(t, tdiff):
     if t:
-        return "{}/{} {}".format(t[0].month, t[0].day, t[1])
+        t_mod = datetime.datetime.fromtimestamp(
+                    int(time.mktime(datetime.datetime.combine(t[0], t[1]).timetuple()))
+                    + tdiff)
+        return "{}/{} {}".format(t_mod.date().month, t_mod.date().day, t_mod.time())
     return "----"
 
 
@@ -162,7 +166,7 @@ class NMEAGraph(object):
         for s, t, v in zip(sv, theta, r):
             ax.text(t, v, s)
 
-    def _create_linegraph(self, gps, thr, ax):
+    def _create_linegraph(self, gps, thr, tdiff, ax):
         ax.set_title("fixed SN")
         ax.set_ylabel("CN")
         ax.set_ylim(thr["sn"], 50)
@@ -175,7 +179,7 @@ class NMEAGraph(object):
 
         timespan = self._get_linegraph_timesplit(gps["time"])
         ax.set_xticks(timespan)
-        ax.set_xticklabels(map(lambda i: make_timestr(gps["time"][i]), timespan),
+        ax.set_xticklabels(map(lambda i: make_timestr(gps["time"][i], tdiff), timespan),
                            rotation=15, fontsize="small")
         ax.legend(bbox_to_anchor=(1, 1), loc=2, frameon=True)
 
@@ -191,7 +195,7 @@ class NMEAGraph(object):
 
         return l + [timelen-1]
 
-    def draw(self, thr, show, timewidth):
+    def draw(self, thr, show, timewidth, tdiff=0):
         u""" グラフ描画 """
 
         # sns.set(palette='colorblind')
@@ -208,7 +212,7 @@ class NMEAGraph(object):
             self._create_bargraph(gps, thr, fig.add_subplot(row, col, 1))
         if show["pos"]:
             self._create_polargraph(gps, gsamode, fig.add_subplot(row, col, col, polar=True))
-        self._create_linegraph(gps, thr, fig.add_subplot(row, 1, row))
+        self._create_linegraph(gps, thr, tdiff, fig.add_subplot(row, 1, row))
         plt.show()
 
 

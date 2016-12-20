@@ -3,7 +3,9 @@
 
 import sys
 import os
+import time
 import datetime
+import re
 import logging
 import logging.config
 from PyQt4 import QtCore
@@ -144,6 +146,7 @@ class MyGui(QtGui.QMainWindow):
         self._tableBtn = list()
         self._thr = {"sn": 1, "el": 0}
         self._show = {"avrg": True, "pos": True, "gsamode": True}
+        self._tz = 9*3600   # UTC+9:00 (JPN)
         self._dirpath = "."
         self._timeselect = TimeSelect(self)
         self._menuobj = {}
@@ -168,6 +171,8 @@ class MyGui(QtGui.QMainWindow):
         fileMenu.addAction(self._create_fileopenmenu())
 
         editMenu = menubar.addMenu('&Edit')
+        tzMenu = editMenu.addMenu('Time zone')
+        tzMenu.addAction(self._create_tzmenu())
         threshMenu = editMenu.addMenu('Set Thresh')
         threshMenu.addAction(self._create_timewidthmenu())
         threshMenu.addAction(self._create_threshmenu("sn"))
@@ -204,6 +209,12 @@ class MyGui(QtGui.QMainWindow):
         menu = QtGui.QAction("Time width select", self)
         menu.setStatusTip("select time width")
         menu.triggered.connect(self._timeselect.show)
+        return menu
+
+    def _create_tzmenu(self):
+        menu = QtGui.QAction("Time zone select", self)
+        menu.setStatusTip("select time zone")
+        menu.triggered.connect(self._set_timezone)
         return menu
 
     def _create_showmenu(self, key):
@@ -274,6 +285,28 @@ class MyGui(QtGui.QMainWindow):
         if ok:
             self._thr[key] = thr
 
+    def _set_timezone(self):
+        f_t = lambda h=0,m=0: h*3600+m*60
+        tzlist = [
+                f_t(14), f_t(13), f_t(12, 45), f_t(12), f_t(11), f_t(10, 30),
+                f_t(10), f_t(9, 30), f_t(9), f_t(8, 45), f_t(8, 30), f_t(8),
+                f_t(7), f_t(6, 30), f_t(6), f_t(5, 45), f_t(5, 30), f_t(5),
+                f_t(4, 30), f_t(4), f_t(3, 30), f_t(3), f_t(2), f_t(1), f_t(0),
+                -1*f_t(1), -1*f_t(2), -1*f_t(3), -1*f_t(3, 30), -1*f_t(4),
+                -1*f_t(5), -1*f_t(6), -1*f_t(7), -1*f_t(8), -1*f_t(9),
+                -1*f_t(9, 30), -1*f_t(10), -1*f_t(11), -1*f_t(12)
+              ]
+        f_str = lambda t: "UTC {}{}:{:02d}".format("+" if t>=0 else "-", abs(t//3600), abs(t%3600//60))
+        tzstr, ok = QtGui.QInputDialog.getItem(self, "time zone", "select time zoze",
+                list(map(f_str, tzlist)), current=tzlist.index(self._tz), editable=False)
+        if ok:
+            match = re.match(r"UTC (\+|\-)([0-9]+):([0-9]+)", tzstr)
+            if match:
+                self._tz = int(match.group(2))*3600 + int(match.group(3))*60
+                if match.group(1) == "-":
+                    self._tz *= -1
+
+
     def _set_show(self, key):
         self._show[key] = self._menuobj[key].isChecked()
 
@@ -315,9 +348,14 @@ class MyGui(QtGui.QMainWindow):
         self._table.verticalHeader().setVisible(False)
         self.setCentralWidget(self._table)
 
-    @staticmethod
-    def _str_datetime(rmc):
-        return "{} {}".format(rmc.datestamp, rmc.timestamp) if rmc.timestamp else "----"
+    def _str_datetime(self, rmc):
+        if rmc.datestamp and rmc.timestamp:
+            rmc_tz = datetime.datetime.fromtimestamp(
+                        int(time.mktime(datetime.datetime.combine(
+                            rmc.datestamp, rmc.timestamp).timetuple()))
+                        + self._tz)
+            return "{} {}".format(rmc_tz.date(), rmc_tz.time())
+        return "----"
 
     def _show_table(self, trip):
         self._create_table_area()
@@ -397,7 +435,7 @@ class MyGui(QtGui.QMainWindow):
         btn.setStyleSheet("Text-align:left")
 
         graph = nmea_graph.NMEAGraph(tid, parsed["gps"])
-        btn.clicked.connect(lambda: graph.draw(self._thr, self._show, self._timeselect.get()))
+        btn.clicked.connect(lambda: graph.draw(self._thr, self._show, self._timeselect.get(), self._tz))
         self._tableBtn.append([btn, graph])
 
         return btn
