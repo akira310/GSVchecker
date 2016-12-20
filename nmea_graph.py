@@ -34,10 +34,11 @@ def check_thr(gps, thr, show, timewidth):
         for i, t in enumerate(reversed(gps["time"])):
             dt = datetime.datetime.combine(t[0], t[1])
             if timewidth[1] >= dt:
-                gps["time"] = gps["time"][:len(gps)-i]
+                end = len(gps["time"])-i
+                gps["time"] = gps["time"][:end]
                 for v in gps["sv"].values():
                     for k in ["sn", "el", "az"]:
-                        v[k] = v[k][:len(gps)-i]
+                        v[k] = v[k][:end]
                 break
 
     return gps
@@ -173,7 +174,6 @@ class NMEAGraph(object):
             ax.plot(v["sn"], label=k)
 
         timespan = self._get_linegraph_timesplit(gps["time"])
-        print(timespan)
         ax.set_xticks(timespan)
         ax.set_xticklabels(map(lambda i: make_timestr(gps["time"][i]), timespan),
                            rotation=15, fontsize="small")
@@ -181,10 +181,10 @@ class NMEAGraph(object):
 
     @staticmethod
     def _get_linegraph_timesplit(time):
+        l = [0]
         timelen = len(time)
-        splt = 5 if timelen >= 5 else timelen
+        splt = 5 if timelen > 5 else timelen-1
         l = [i for i in range(0, timelen-1, (timelen-1)//splt)]
-
         # 分割した最後の値が終端に近すぎるとグラフ描画時に文字が重なるため削除
         if (timelen-1)-l[-1] < (l[1]-l[0])/3:
             l.pop(-1)
