@@ -39,17 +39,20 @@ class NMEAParser(object):
 
         for i, file in enumerate(files):
             file = os.path.join(path, file)
-            with open(file, "r") as f:
-                line = f.readline().split(",")
-                if "GTRIP" in line[0]:
-                    key = line[-1].rstrip()
-                else:
-                    key = "dummy{}".format(dummy)
-                    dummy+=1
+            if os.path.isfile(file):
+                with open(file, "r") as f:
+                    line = f.readline().split(",")
+                    if "GTRIP" in line[0]:
+                        key = line[-1].rstrip()
+                    else:
+                        key = "dummy{}".format(dummy)
+                        dummy += 1
 
-                if key not in dict_trip:
-                    dict_trip[key] = list()
-                dict_trip[key].append(file)
+                    if key not in dict_trip:
+                        dict_trip[key] = list()
+                    dict_trip[key].append(file)
+            else:
+                sys.stderr.write("{} is not file path".format(file))
 
         return i+1, dict_trip
 
