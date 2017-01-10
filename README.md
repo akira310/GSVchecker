@@ -49,12 +49,8 @@ $GPGSV,3,3,12,28,11,080,24,29,08,247,,30,20,043,26,193,86,159,18*4F
 
 # setuptoolsは2016/12/12時点では最新だとうまくいかなかったのでpyinstaller用の環境を構築する
 # (https://github.com/pyinstaller/pyinstaller/issues/1773)
-conda create -n pyinstall python setuptools=19.2 pyqt=4.11.4 qt=4.8.7 matplotlib seaborn
-activate pyinstall
-
-# pynmea2はcondaからのinstallでconflictが発生したので悩まずpipで入れる
-pip install pynmea2
-conda install --channel https://conda.anaconda.org/silg2 pyinstaller
+conda create -f env.yml
+activate gsvchecker
 
 # exeファイル生成
 pyinstaller gsvchecker.spec --onefile
