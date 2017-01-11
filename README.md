@@ -40,7 +40,6 @@ $GPGSV,3,3,12,28,11,080,24,29,08,247,,30,20,043,26,193,86,159,18*4F
 2016/12/12時点で,PyQt4(GPL)を使用しているためexe化する際はライセンスに配慮する必要がある
 * cx_freezeでは,includesの追加やTCL_LIBRARY,TK_LIBRARYのpath設定を反映しても
   うまくいかなかったので,諦めました
-* pyinstallerでのexe化+動作は確認済です.
 
 ```
 ####################################
@@ -53,6 +52,8 @@ conda create -f env.yml
 activate gsvchecker
 
 # exeファイル生成
+# onefileオプション付けてるけどdllがないエラーがでる模様なので,
+# エラーが出た場合は対象dllを入れてもらう必要がある
 pyinstaller gsvchecker.spec --onefile
 
 # 2016/12/12時点ではloggerは使えていないのでcopyしなくても実害はない
