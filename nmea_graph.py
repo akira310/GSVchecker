@@ -9,6 +9,7 @@ import datetime
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+import pdb
 
 
 def add_timediff(dt, tdiff):
@@ -28,13 +29,16 @@ def check_thr(gps, thr, show, timewidth, tdiff):
     if timewidth[0]:    # start time
         start = add_timediff(timewidth[0], -1*tdiff)
         for i, t in enumerate(gps["time"]):
-            dt = datetime.datetime.combine(t[0], t[1])
-            if start <= dt:
-                gps["time"] = gps["time"][i:]
-                for v in gps["sv"].values():
-                    for k in ["sn", "el", "az"]:
-                        v[k] = v[k][i:]
-                break
+            try:
+                dt = datetime.datetime.combine(t[0], t[1])
+                if start <= dt:
+                    gps["time"] = gps["time"][i:]
+                    for v in gps["sv"].values():
+                        for k in ["sn", "el", "az"]:
+                            v[k] = v[k][i:]
+                    break
+            except TypeError:
+                pass
 
     if timewidth[1]:    # end time
         end = add_timediff(timewidth[1], -1*tdiff)
@@ -67,10 +71,8 @@ def add_gsadata(gsasv, sv, gsa):
     # add gsv data
     if sv["no"] in gsa["sv"]:
         gsa["sv"][sv["no"]]["sn"].append(int(sv["sn"] if sv["sn"] else 0))
-        if sv["el"]:
-            gsa["sv"][sv["no"]]["el"].append(int(sv["el"]))
-        if sv["az"]:
-            gsa["sv"][sv["no"]]["az"].append(int(sv["az"]))
+        gsa["sv"][sv["no"]]["el"].append(int(sv["el"] if sv["el"] else -1))
+        gsa["sv"][sv["no"]]["az"].append(int(sv["az"] if sv["az"] else -1))
 
 
 def add_gsvdata(gps, gsv, gsa):
@@ -81,10 +83,8 @@ def add_gsvdata(gps, gsv, gsa):
                 gsv["sv"][sv["no"]] = copy.deepcopy(gsv["sv"]["dummy"])
 
             gsv["sv"][sv["no"]]["sn"].append(int(sv["sn"] if sv["sn"] else 0))
-            if sv["el"]:
-                gsv["sv"][sv["no"]]["el"].append(int(sv["el"]))
-            if sv["az"]:
-                gsv["sv"][sv["no"]]["az"].append(int(sv["az"]))
+            gsv["sv"][sv["no"]]["el"].append(int(sv["el"] if sv["el"] else -1))
+            gsv["sv"][sv["no"]]["az"].append(int(sv["az"] if sv["az"] else -1))
 
             if "GSA" in gps:
                 add_gsadata(gps["GSA"]["sv"], sv, gsa)
@@ -155,11 +155,12 @@ class NMEAGraph(object):
         theta = list()
         r = list()
 
-        if gsamode:
-            for k, v in gps["sv"].items():
+        for k, v in gps["sv"].items():
+            if np.min(v["az"]) > 0 and np.min(v["el"]) > 0:
                 sv.append(k)
                 theta.append(np.radians(np.average(v["az"])))
                 r.append(90 - np.average(v["el"]))
+
         ax.set_rlim(0, 90)
         ax.set_yticklabels([])
         ax.set_theta_zero_location('N')
