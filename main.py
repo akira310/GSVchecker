@@ -6,6 +6,7 @@ import os
 import time
 import datetime
 import re
+import pandas as pd
 import logging
 import logging.config
 from PyQt4 import QtCore
@@ -257,7 +258,8 @@ class MyGui(QtGui.QMainWindow):
         pbar.show()
 
         for tid, files in tids.items():
-            trip[tid] = {"fname": [], "gps": []}
+            trip[tid] = {"fname": [], "gps": [], "panel": []}
+            dflist = list()
             for f in files:
                 readfile += 1
                 pbar.setValue(readfile)
@@ -265,9 +267,12 @@ class MyGui(QtGui.QMainWindow):
                 if pbar.wasCanceled():
                     break
 
-                parsed, _ = nmea.parse(f)
+                parsed, df = nmea.parse(f)
                 trip[tid]["gps"] += parsed
+                dflist += df
                 trip[tid]["fname"].append(f)
+            tmpdict = dict(zip(range(len(dflist)), dflist))
+            trip[tid]["panel"] =  pd.Panel(tmpdict)
 
             if pbar.wasCanceled():
                 break
@@ -348,14 +353,13 @@ class MyGui(QtGui.QMainWindow):
         self._table.verticalHeader().setVisible(False)
         self.setCentralWidget(self._table)
 
-    def _str_datetime(self, rmc):
-        if rmc.datestamp and rmc.timestamp:
+    def _str_datetime(self, d, t):
+        try:
             rmc_tz = datetime.datetime.fromtimestamp(
-                        int(time.mktime(datetime.datetime.combine(
-                            rmc.datestamp, rmc.timestamp).timetuple()))
-                        + self._tz)
+                        int(time.mktime(datetime.datetime.combine(d, t).timetuple())) + self._tz)
             return "{} {}".format(rmc_tz.date(), rmc_tz.time())
-        return "----"
+        except:
+            return "----"
 
     def _show_table(self, trip):
         self._create_table_area()
@@ -373,7 +377,7 @@ class MyGui(QtGui.QMainWindow):
         for created, (tid, parsed) in enumerate(sorted(trip.items(), key=lambda x: x[1]["fname"][0])):
             pbar.setValue(created+1)
 
-            gps = parsed["gps"]
+            panel = parsed["panel"]
             self._table.insertRow(row)
 
             chkbox = QtGui.QTableWidgetItem()
@@ -388,32 +392,26 @@ class MyGui(QtGui.QMainWindow):
             btnrow.append(row)
             row += 1
 
-            for gpsone in gps:
+            for i in range(len(panel)):
+                ix = panel.ix[i]
+                cmn = ix["cmn"]
                 self._table.insertRow(row)
-                self._table.setItem(row, 0,
-                                    QtGui.QTableWidgetItem(self._str_datetime(gpsone["RMC"])))
-                if "GSV" in gpsone:
-                    self._table.setItem(row, 1,
-                                        QtGui.QTableWidgetItem(
-                                            "{}{}".format(str(len(gpsone["GSV"]["sv"])), gpsone["RMC"].status)))
+                self._table.setItem(row, 0, QtGui.QTableWidgetItem(self._str_datetime(cmn["date"], cmn["time"])))
+                self._table.setItem(row, 1, QtGui.QTableWidgetItem("{}{}".format(cmn["svnum"], cmn["status"])))
 
-                    for sv in gpsone["GSV"]["sv"]:
-                        if not sv["no"]:
-                            continue
+                for sv in ix.columns:
+                    if sv == "cmn":
+                        continue
 
-                        if sv["no"] not in svlist:
-                            svlist.append(sv["no"])
-                            self._table.insertColumn(self._table.columnCount())
-                            self._table.setColumnWidth(self._table.columnCount()-1, 40)
+                    if sv not in svlist:
+                        svlist.append(sv)
+                        self._table.insertColumn(self._table.columnCount())
+                        self._table.setColumnWidth(self._table.columnCount()-1, 40)
 
-                        self._table.setItem(row, svlist.index(sv["no"])+len(self._label),
-                                            QtGui.QTableWidgetItem("{}".format(sv["sn"] if sv["sn"] else "-")))
-
-                if "GSA" in gpsone:
-                    for used in gpsone["GSA"]["sv"]:
-                        item = self._table.item(row, svlist.index(used)+len(self._label))
-                        if item:
-                            item.setBackgroundColor(QtGui.QColor("cyan"))
+                    col = svlist.index(sv)+len(self._label)
+                    self._table.setItem(row, col, QtGui.QTableWidgetItem("{}".format(ix[sv]["sn"])))
+                    if "use" in ix[sv] and ix[sv]["use"] == True:
+                        self._table.item(row, col).setBackgroundColor(QtGui.QColor("cyan"))
 
                 self._table.hideRow(row)
                 row += 1
@@ -425,6 +423,7 @@ class MyGui(QtGui.QMainWindow):
 
         pbar.close()
         QtGui.QApplication.restoreOverrideCursor()
+
 
     def _create_graphbtn(self, tid, parsed):
         fname = lambda s: os.path.splitext(os.path.basename(s))[0]
