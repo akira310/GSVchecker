@@ -265,7 +265,7 @@ class MyGui(QtGui.QMainWindow):
                 if pbar.wasCanceled():
                     break
 
-                parsed = nmea.parse(f)
+                parsed, _ = nmea.parse(f)
                 trip[tid]["gps"] += parsed
                 trip[tid]["fname"].append(f)
 

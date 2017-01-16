@@ -4,6 +4,8 @@
 import sys
 import re
 import os
+import copy
+import pandas as pd
 from time import sleep
 import pynmea2
 import logging
@@ -82,6 +84,7 @@ class NMEAParser(object):
         """
 
         parsed = list()
+        dflist = list()
         newnmea = True
         with open(file, "r") as f:
             r = re.compile("(^\$..)(RMC|GSA|GSV)(.*)")
@@ -93,6 +96,28 @@ class NMEAParser(object):
                         rmc = self._parse_nmea(line)
                         if len(parsed) and rmc.timestamp == parsed[-1]["RMC"].timestamp:
                             newnmea = False
+                            p = copy.deepcopy(parsed[-1])
+                            d = dict()
+                            # add common data.
+                            d["cmn"] = {
+                                    "date": p["RMC"].datestamp,
+                                    "time": p["RMC"].timestamp,
+                                    "status": p["RMC"].status,
+                                    "svnum": 0,
+                                    }
+
+                            # add every SV data
+                            if "GSV" in p:
+                                d["cmn"]["svnum"] = p["GSV"]["num_sv_in_view"]
+                                for sv in p["GSV"]["sv"]:
+                                    d[sv["no"]] = copy.deepcopy(sv)
+                                    d[sv["no"]].pop("no")
+                                    d[sv["no"]]["use"] = False
+                            if "GSA" in p:
+                                for used in p["GSA"]["sv"]:
+                                    d[used]["use"] = True
+
+                            dflist.append(pd.DataFrame.from_dict(d))
                         else:
                             newnmea = True
                             parsed.append(dict())
@@ -103,7 +128,7 @@ class NMEAParser(object):
                         else:
                             parsed[-1][toker] = self._parse_nmea(line)
 
-        return parsed
+        return parsed, dflist
 
     def _parse_nmea(self, sentence):
         try:
@@ -127,7 +152,7 @@ class NMEAParser(object):
                 nmea = gsa
             elif msg.sentence_type == "GSV":
                 gsv = dict()
-                gsv["in_view"] = msg.num_sv_in_view
+                gsv["num_sv_in_view"] = msg.num_sv_in_view
                 svlist = list()
                 for i in range(1, 5):
                     sv = dict()
