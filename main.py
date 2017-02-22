@@ -13,6 +13,7 @@ from PyQt4 import QtCore
 from PyQt4 import QtGui
 import nmea_parse  # my module
 import nmea_graph  # my module
+import nmea_graph_pandas  # my module
 import myinfo      # my module
 
 
@@ -267,12 +268,12 @@ class MyGui(QtGui.QMainWindow):
                 if pbar.wasCanceled():
                     break
 
-                parsed, df = nmea.parse(f)
-                trip[tid]["gps"] += parsed
+                _, df = nmea.parse(f)
+                # trip[tid]["gps"] += parsed
                 dflist += df
                 trip[tid]["fname"].append(f)
-            tmpdict = dict(zip(range(len(dflist)), dflist))
-            trip[tid]["panel"] =  pd.Panel(tmpdict)
+
+            trip[tid]["panel"] =  pd.Panel(dict(zip(range(len(dflist)), dflist)))
 
             if pbar.wasCanceled():
                 break
@@ -433,7 +434,8 @@ class MyGui(QtGui.QMainWindow):
         btn = QtGui.QPushButton(text)
         btn.setStyleSheet("Text-align:left")
 
-        graph = nmea_graph.NMEAGraph(tid, parsed["gps"], self._tz)
+        # graph = nmea_graph.NMEAGraph(tid, parsed["gps"], self._tz)
+        graph = nmea_graph_pandas.NMEAGraph(tid, parsed["panel"], self._tz)
         btn.clicked.connect(lambda: graph.draw(self._thr, self._show, self._timeselect.get()))
         self._tableBtn.append([btn, graph])
 
