@@ -56,7 +56,6 @@ def make_timestr(t, tdiff):
         return "{}/{} {}".format(t_mod.date().month, t_mod.date().day, t_mod.time())
     return "----"
 
-def conv2num(panel):
 
 
 class NMEAGraph(object):
@@ -69,8 +68,10 @@ class NMEAGraph(object):
         self._log = logging.getLogger(__name__)
         self._tid = tid
         self._tz = tz
-        self._gpspanel = conv2num(gpspanel)
+        # self._gpspanel = conv2num(gpspanel)
+        self._gpspanel = gpspanel
 
+    @staticmethod
     def _create_bargraph(panel, thr, ax):
         ax.set_ylim(thr["sn"], 50)
         x = list()

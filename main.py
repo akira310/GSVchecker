@@ -9,8 +9,8 @@ import re
 import pandas as pd
 import logging
 import logging.config
-from PyQt5 import QtCore
-from PyQt5 import QtGui
+from PyQt4 import QtCore
+from PyQt4 import QtGui
 import nmea_parse  # my module
 import nmea_graph  # my module
 import nmea_graph_pandas  # my module
