@@ -97,7 +97,7 @@ def add_gsvdata(gps, gsv, gsa):
 
 
 def create_gpsdata(gpsinput):
-    base = {"sv": {"dummy": {"sn": [], "el": [], "az": []}}, "time": []}
+    base = {"sv": {"dummy": {"sn": [], "el": [], "az": []}}, "time": [], "hdop": []}
     gsa = copy.deepcopy(base)
     gsv = copy.deepcopy(base)
 
@@ -105,8 +105,10 @@ def create_gpsdata(gpsinput):
         rmc = gps["RMC"]
         now = (rmc.datestamp, rmc.timestamp) if rmc.datestamp and rmc.timestamp else None
         gsv["time"].append(now)
+        gsv["hdop"].append(float(gps["GGA"]["hdop"]) if "GGA" in gps else 99)
         if "GSA" in gps:
             gsa["time"].append(now)
+            gsa["hdop"].append(float(gps["GGA"]["hdop"]) if "GGA" in gps else 99)
 
         add_gsvdata(gps, gsv, gsa)
 
@@ -155,8 +157,16 @@ class NMEAGraph(object):
         theta = list()
         r = list()
 
-        for k, v in gps["sv"].items():
-            if np.min(v["az"]) > 0 and np.min(v["el"]) > 0:
+        for k, v_tmp in gps["sv"].items():
+            v = {"az":[], "el":[]}
+            for i in range(len(v_tmp["az"])):
+                if v_tmp["az"][i] > 0:
+                    v["az"].append(v_tmp["az"][i])
+                if v_tmp["el"][i] > 0:
+                    v["el"].append(v_tmp["el"][i])
+
+            if len(v["az"]) > 0 and np.min(v["az"]) > 0 and \
+               len(v["el"]) > 0 and np.min(v["el"]) > 0:
                 sv.append(k)
                 theta.append(np.radians(np.average(v["az"])))
                 r.append(90 - np.average(v["el"]))
@@ -189,6 +199,21 @@ class NMEAGraph(object):
                            rotation=15, fontsize="small")
         ax.legend(bbox_to_anchor=(1, 1), loc=2, frameon=True)
 
+    def _create_hdop(self, gps, thr, tdiff, ax):
+        ax.set_title("dop")
+        ax.set_ylabel("hdop")
+        ax.set_ylim(0, 15)
+
+        if len(gps) < 1 or len(gps["time"]) < 3:
+            return
+
+        ax.plot(gps["hdop"], label="hdop")
+        timespan = self._get_linegraph_timesplit(gps["time"])
+        ax.set_xticks(timespan)
+        ax.set_xticklabels(map(lambda i: make_timestr(gps["time"][i], tdiff), timespan),
+                           rotation=15, fontsize="small")
+        # ax.legend(bbox_to_anchor=(1, 1), loc=2, frameon=True)
+
     @staticmethod
     def _get_linegraph_timesplit(time):
         l = [0]
@@ -212,13 +237,17 @@ class NMEAGraph(object):
         gps = copy.deepcopy(self._gsa if gsamode else self._gsv)
 
         gps = check_thr(gps, thr, show, timewidth, self._tz)
-        row = 2 if show["avrg"] or show["pos"] else 1
-        col = 2 if show["avrg"] and show["pos"] else 1
-        if show["avrg"]:
-            self._create_bargraph(gps, thr, fig.add_subplot(row, col, 1))
         if show["pos"]:
-            self._create_polargraph(gps, gsamode, fig.add_subplot(row, col, col, polar=True))
-        self._create_linegraph(gps, thr, self._tz, fig.add_subplot(row, 1, row))
+            self._create_bargraph(gps, thr, fig.add_subplot(2, 2, 1))
+            self._create_polargraph(gps, gsamode, fig.add_subplot(2, 2, 2, polar=True))
+        else:
+            self._create_bargraph(gps, thr, fig.add_subplot(2, 1, 1))
+
+        if show["hdop"]:
+            self._create_hdop(gps, thr, self._tz, fig.add_subplot(2, 2, 3))
+            self._create_linegraph(gps, thr, self._tz, fig.add_subplot(2, 2, 4))
+        else:
+            self._create_linegraph(gps, thr, self._tz, fig.add_subplot(2, 1, 2))
         plt.show()
 
 

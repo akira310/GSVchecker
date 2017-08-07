@@ -84,7 +84,7 @@ class NMEAParser(object):
         parsed = list()
         newnmea = True
         with open(file, "r") as f:
-            r = re.compile("(^\$..)(RMC|GSA|GSV)(.*)")
+            r = re.compile("(^\$..)(RMC|GGA|GSA|GSV)(.*)")
             for line in f:
                 match = r.match(line)
                 if match:
@@ -139,6 +139,11 @@ class NMEAParser(object):
                         svlist.append(sv)
                 gsv["sv"] = svlist
                 nmea = gsv
+            elif msg.sentence_type == "GGA":
+                gga = dict()
+                gga["hdop"] = msg.horizontal_dil
+                nmea = gga
+
         except pynmea2.nmea.ChecksumError:
             tmp = sentence.split(",")
             tmp[-1] = str(pynmea2.nmea.NMEASentence.checksum(sentence))

@@ -145,7 +145,7 @@ class MyGui(QtGui.QMainWindow):
         self._table = QtGui.QTableWidget()
         self._tableBtn = list()
         self._thr = {"sn": 1, "el": 0}
-        self._show = {"avrg": True, "pos": True, "gsamode": True}
+        self._show = {"avrg": True, "pos": True, "gsamode": True, "hdop": True}
         self._tz = 9*3600   # UTC+9:00 (JPN)
         self._dirpath = "."
         self._timeselect = TimeSelect(self)
@@ -179,11 +179,12 @@ class MyGui(QtGui.QMainWindow):
         tzMenu.addAction(self._create_tzmenu())
         showMenu = editMenu.addMenu('Show graph')
         showMenu.addAction(self._create_showmenu("gsamode"))
-        showMenu.addAction(self._create_showmenu("avrg"))
+        # showMenu.addAction(self._create_showmenu("avrg"))
         showMenu.addAction(self._create_showmenu("pos"))
+        showMenu.addAction(self._create_showmenu("hdop"))
 
         helpMenu = menubar.addMenu('&Help')
-        helpMenu.addAction(self._create_versionmenu())
+        # helpMenu.addAction(self._create_versionmenu())
 
     def _create_fileopenmenu(self):
         menu = QtGui.QAction(
@@ -220,7 +221,8 @@ class MyGui(QtGui.QMainWindow):
     def _create_showmenu(self, key):
         a = {"avrg": {"menu": "Show average", "tip": "Show avereage"},
              "pos": {"menu": "Show position", "tip": "Show position"},
-             "gsamode": {"menu": "Use GSA", "tip": "Use GSA"}}
+             "gsamode": {"menu": "Use GSA", "tip": "Use GSA"},
+             "hdop": {"menu": "Show hdop", "tip": "Show hdop (not data == 99)"}}
 
         if key in a:
             menu = QtGui.QAction(a[key]["menu"], self, checkable=True)
@@ -338,7 +340,7 @@ class MyGui(QtGui.QMainWindow):
         self._text.setText(readme)
 
     def _create_table_area(self):
-        self._label = ["time", "sv num"]
+        self._label = ["time", "sv num", "hdop"]
         self._labelwidth = [170, 60]
         self._table.setRowCount(0)
         self._table.setColumnCount(len(self._label))
@@ -392,6 +394,7 @@ class MyGui(QtGui.QMainWindow):
                 self._table.insertRow(row)
                 self._table.setItem(row, 0,
                                     QtGui.QTableWidgetItem(self._str_datetime(gpsone["RMC"])))
+                self._table.setItem(row, 2, QtGui.QTableWidgetItem(gpsone["GGA"]["hdop"] if "GGA" in gpsone else 99))
                 if "GSV" in gpsone:
                     self._table.setItem(row, 1,
                                         QtGui.QTableWidgetItem(
