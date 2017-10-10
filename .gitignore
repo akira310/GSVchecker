@@ -1,7 +1,9 @@
 
 !.gitignore
-20_走行データ.lnk
+*.lnk
 __pycache__
 build
 dist
 cx_freeze
+.idea
+
