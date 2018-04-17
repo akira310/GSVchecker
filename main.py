@@ -434,6 +434,11 @@ class MyGui(QtGui.QMainWindow):
         text = "[{}] {}".format(tid, fname(parsed["fname"][0]))
         if len(parsed["fname"]) > 1:
             text += " - " + fname(parsed["fname"][-1])
+
+        for f in parsed["fname"]:
+            print(fname(f))
+        print(text)
+
         btn = QtGui.QPushButton(text)
         btn.setStyleSheet("Text-align:left")
 

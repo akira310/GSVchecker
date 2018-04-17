@@ -41,9 +41,10 @@ class NMEAParser(object):
             file = os.path.join(path, file)
             if os.path.isfile(file):
                 with open(file, "r") as f:
+                    print("open:", file)
                     line = f.readline().split(",")
-                    if "GTRIP" in line[0]:
-                        key = line[-1].rstrip()
+                    if len(line) >= 2 and "GTRIP" in line[0]:
+                        key = line[1].rstrip()
                     else:
                         key = "dummy{}".format(dummy)
                         dummy += 1
