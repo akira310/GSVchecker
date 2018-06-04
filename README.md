@@ -66,5 +66,6 @@ cp logging.cfg dist
 * loggingの出力をGUIのログエリアにも表示する
 * 処理の最適化
     * for文回し過ぎでデータ生成まで時間がかかっている
-
-
+* pandas使う(branch切ったけど放置中)
+* コード大整理
+* Anacondaやめたから環境ファイルとか直す
