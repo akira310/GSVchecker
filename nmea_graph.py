@@ -237,17 +237,22 @@ class NMEAGraph(object):
         gps = copy.deepcopy(self._gsa if gsamode else self._gsv)
 
         gps = check_thr(gps, thr, show, timewidth, self._tz)
-        if show["pos"]:
-            self._create_bargraph(gps, thr, fig.add_subplot(2, 2, 1))
-            self._create_polargraph(gps, gsamode, fig.add_subplot(2, 2, 2, polar=True))
-        else:
-            self._create_bargraph(gps, thr, fig.add_subplot(2, 1, 1))
 
-        if show["hdop"]:
-            self._create_hdop(gps, thr, self._tz, fig.add_subplot(2, 2, 3))
-            self._create_linegraph(gps, thr, self._tz, fig.add_subplot(2, 2, 4))
-        else:
-            self._create_linegraph(gps, thr, self._tz, fig.add_subplot(2, 1, 2))
+        # First row setting
+        rownum = 2 if show["sn"] or show["hdop"] else 1
+        clmnum = 2 if show["pos"] else 1
+        if show["pos"]:
+            self._create_polargraph(gps, gsamode, fig.add_subplot(rownum, 2, 2, polar=True))
+        self._create_bargraph(gps, thr, fig.add_subplot(rownum, clmnum, 1))
+
+        # second row setting
+        if rownum == 2:
+            clmnum = 2 if show["sn"] and show["hdop"] else 1
+            if show["hdop"]:
+                self._create_hdop(gps, thr, self._tz, fig.add_subplot(rownum, clmnum, 3 if clmnum == 2 else 2))
+            if show["sn"]:
+                self._create_linegraph(gps, thr, self._tz, fig.add_subplot(rownum, clmnum,  4 if clmnum == 2 else 2))
+
         plt.show()
 
 

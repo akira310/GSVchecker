@@ -145,7 +145,7 @@ class MyGui(QtGui.QMainWindow):
         self._table = QtGui.QTableWidget()
         self._tableBtn = list()
         self._thr = {"sn": 1, "el": 0}
-        self._show = {"avrg": True, "pos": True, "gsamode": True, "hdop": True}
+        self._show = {"avrg": True, "pos": True, "gsamode": True, "hdop": True, "sn": True}
         self._tz = 9*3600   # UTC+9:00 (JPN)
         self._dirpath = "."
         self._timeselect = TimeSelect(self)
@@ -182,6 +182,7 @@ class MyGui(QtGui.QMainWindow):
         # showMenu.addAction(self._create_showmenu("avrg"))
         showMenu.addAction(self._create_showmenu("pos"))
         showMenu.addAction(self._create_showmenu("hdop"))
+        showMenu.addAction(self._create_showmenu("sn"))
 
         helpMenu = menubar.addMenu('&Help')
         # helpMenu.addAction(self._create_versionmenu())
@@ -222,7 +223,9 @@ class MyGui(QtGui.QMainWindow):
         a = {"avrg": {"menu": "Show average", "tip": "Show avereage"},
              "pos": {"menu": "Show position", "tip": "Show position"},
              "gsamode": {"menu": "Use GSA", "tip": "Use GSA"},
-             "hdop": {"menu": "Show hdop", "tip": "Show hdop (not data == 99)"}}
+             "hdop": {"menu": "Show hdop", "tip": "Show hdop (not data == 99)"},
+             "sn": {"menu": "Show time series S/N data", "tip": "Show S/N"},
+             }
 
         if key in a:
             menu = QtGui.QAction(a[key]["menu"], self, checkable=True)
