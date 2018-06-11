@@ -43,9 +43,10 @@ class NMEAParser(object):
             file = os.path.join(path, file)
             if os.path.isfile(file):
                 with open(file, "r") as f:
+                    print("open:", file)
                     line = f.readline().split(",")
-                    if "GTRIP" in line[0]:
-                        key = line[-1].rstrip()
+                    if len(line) >= 2 and "GTRIP" in line[0]:
+                        key = line[1].rstrip()
                     else:
                         key = "dummy{}".format(dummy)
                         dummy += 1
@@ -87,7 +88,7 @@ class NMEAParser(object):
         dflist = list()
         newnmea = True
         with open(file, "r") as f:
-            r = re.compile("(^\$..)(RMC|GSA|GSV)(.*)")
+            r = re.compile("(^\$..)(RMC|GGA|GSA|GSV)(.*)")
             for line in f:
                 match = r.match(line)
                 if match:
@@ -164,6 +165,11 @@ class NMEAParser(object):
                         svlist.append(sv)
                 gsv["sv"] = svlist
                 nmea = gsv
+            elif msg.sentence_type == "GGA":
+                gga = dict()
+                gga["hdop"] = msg.horizontal_dil
+                nmea = gga
+
         except pynmea2.nmea.ChecksumError:
             tmp = sentence.split(",")
             tmp[-1] = str(pynmea2.nmea.NMEASentence.checksum(sentence))

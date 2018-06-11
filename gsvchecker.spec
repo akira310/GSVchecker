@@ -4,7 +4,7 @@ block_cipher = None
 
 
 a = Analysis(['main.py'],
-             pathex=['E:\\dev\\src\\gitlab.com\\akira310\\GSVchecker'],
+             pathex=['E:\\dev\\src\\gitlab.com\\sakirror\\GSVchecker'],
              binaries=None,
              datas=[
                  ('C:\\Anaconda3\\envs\\gsvchecker\\Library\\bin\\mkl_avx.dll','.'),
